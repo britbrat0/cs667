@@ -1,0 +1,70 @@
+.heatmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.heatmap-header h4 {
+  margin: 0;
+}
+
+.heatmap-toggle {
+  display: flex;
+  gap: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.heatmap-toggle button {
+  padding: 0.35rem 0.75rem;
+  border: none;
+  background: #fff;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.heatmap-toggle button.active {
+  background: #1a1a2e;
+  color: #fff;
+}
+
+.heatmap-toggle button:not(:last-child) {
+  border-right: 1px solid #ddd;
+}
+
+.heatmap-tooltip {
+  text-align: center;
+  padding: 0.35rem 0.75rem;
+  background: #1a1a2e;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+  display: inline-block;
+}
+
+.heatmap-toggle button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.heatmap-gradient {
+  width: 120px;
+  height: 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}

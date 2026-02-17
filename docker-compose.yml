@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend-data:/app/data
+    environment:
+      - JWT_SECRET=dev-secret-change-in-production
+      - EBAY_APP_ID=${EBAY_APP_ID:-}
+      - EBAY_CERT_ID=${EBAY_CERT_ID:-}
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID:-}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:-}
+
+volumes:
+  backend-data:

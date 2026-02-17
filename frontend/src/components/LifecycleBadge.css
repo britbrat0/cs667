@@ -1,0 +1,25 @@
+.lifecycle-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 20px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.lifecycle-badge--large {
+  font-size: 0.9rem;
+  padding: 0.4rem 1rem;
+}
+
+.lifecycle-badge--small {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.5rem;
+}
+
+.lifecycle-icon {
+  font-size: 0.85em;
+}
