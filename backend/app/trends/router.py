@@ -15,15 +15,30 @@ STALE_THRESHOLD_HOURS = 6
 
 
 def _has_fresh_data(keyword: str) -> bool:
-    """Check if we have recent data (< STALE_THRESHOLD_HOURS old) for a keyword."""
+    """Check if we have recent data (< STALE_THRESHOLD_HOURS old) from all configured sources."""
     conn = get_connection()
     threshold = (datetime.now(timezone.utc) - timedelta(hours=STALE_THRESHOLD_HOURS)).isoformat()
-    row = conn.execute(
-        "SELECT COUNT(*) as cnt FROM trend_data WHERE keyword = ? AND recorded_at >= ?",
+
+    # Check that we have fresh data from each configured source, not just any source
+    sources = conn.execute(
+        "SELECT DISTINCT source FROM trend_data WHERE keyword = ? AND recorded_at >= ?",
         (keyword, threshold),
-    ).fetchone()
+    ).fetchall()
     conn.close()
-    return row["cnt"] > 0
+
+    fresh_sources = {r["source"] for r in sources}
+
+    # At minimum we need google_trends; also require ebay/etsy if they are configured
+    if "google_trends" not in fresh_sources:
+        return False
+
+    from app.config import settings
+    if settings.ebay_app_id and settings.ebay_cert_id and "ebay" not in fresh_sources:
+        return False
+    if settings.etsy_api_key and "etsy" not in fresh_sources:
+        return False
+
+    return True
 
 
 def _ensure_keyword_tracked(keyword: str):

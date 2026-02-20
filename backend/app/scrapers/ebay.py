@@ -10,11 +10,20 @@ from app.database import get_connection
 
 logger = logging.getLogger(__name__)
 
-# eBay OAuth token endpoint (production)
-EBAY_AUTH_URL = "https://api.ebay.com/identity/v1/oauth2/token"
+# eBay OAuth token endpoint (sandbox if keys contain SBX, else production)
+EBAY_AUTH_URL_PROD = "https://api.ebay.com/identity/v1/oauth2/token"
+EBAY_AUTH_URL_SANDBOX = "https://api.sandbox.ebay.com/identity/v1/oauth2/token"
 
-# eBay Browse API search endpoint
-EBAY_BROWSE_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
+EBAY_BROWSE_URL_PROD = "https://api.ebay.com/buy/browse/v1/item_summary/search"
+EBAY_BROWSE_URL_SANDBOX = "https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search"
+
+
+def _is_sandbox() -> bool:
+    return "SBX" in (settings.ebay_app_id or "")
+
+
+EBAY_SCOPE_PROD = "https://api.ebay.com/oauth/api_scope"
+EBAY_SCOPE_SANDBOX = "https://api.sandbox.ebay.com/oauth/api_scope"
 
 _cached_token = {"token": None, "expires_at": 0}
 
@@ -35,15 +44,19 @@ def _get_oauth_token() -> str | None:
             f"{settings.ebay_app_id}:{settings.ebay_cert_id}".encode()
         ).decode()
 
+        sandbox = _is_sandbox()
+        auth_url = EBAY_AUTH_URL_SANDBOX if sandbox else EBAY_AUTH_URL_PROD
+        scope = EBAY_SCOPE_SANDBOX if sandbox else EBAY_SCOPE_PROD
+
         resp = requests.post(
-            EBAY_AUTH_URL,
+            auth_url,
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
                 "Authorization": f"Basic {credentials}",
             },
             data={
                 "grant_type": "client_credentials",
-                "scope": "https://api.ebay.com/oauth/api_scope",
+                "scope": scope,
             },
             timeout=15,
         )
@@ -86,7 +99,9 @@ def scrape_ebay(keyword: str) -> bool:
             "filter": "buyingOptions:{FIXED_PRICE|AUCTION}",
         }
 
-        resp = requests.get(EBAY_BROWSE_URL, headers=headers, params=params, timeout=20)
+        browse_url = EBAY_BROWSE_URL_SANDBOX if _is_sandbox() else EBAY_BROWSE_URL_PROD
+
+        resp = requests.get(browse_url, headers=headers, params=params, timeout=20)
 
         if resp.status_code == 401:
             # Token expired, clear cache and retry once
@@ -94,7 +109,7 @@ def scrape_ebay(keyword: str) -> bool:
             token = _get_oauth_token()
             if token:
                 headers["Authorization"] = f"Bearer {token}"
-                resp = requests.get(EBAY_BROWSE_URL, headers=headers, params=params, timeout=20)
+                resp = requests.get(browse_url, headers=headers, params=params, timeout=20)
 
         if resp.status_code != 200:
             logger.warning(f"eBay Browse API returned {resp.status_code} for '{keyword}': {resp.text[:200]}")
