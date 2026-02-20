@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     ebay_app_id: str = os.getenv("EBAY_APP_ID", "")
     ebay_cert_id: str = os.getenv("EBAY_CERT_ID", "")
 
+    etsy_api_key: str = os.getenv("ETSY_API_KEY", "")
+
     class Config:
         env_file = ".env"
 

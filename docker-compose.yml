@@ -20,6 +20,7 @@ services:
       - EBAY_CERT_ID=${EBAY_CERT_ID:-}
       - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID:-}
       - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:-}
+      - ETSY_API_KEY=${ETSY_API_KEY:-}
 
 volumes:
   backend-data:

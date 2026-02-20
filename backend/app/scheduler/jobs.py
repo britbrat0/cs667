@@ -6,6 +6,7 @@ from app.scrapers.google_trends import scrape_google_trends
 from app.scrapers.ebay import scrape_ebay
 from app.scrapers.reddit import scrape_reddit
 from app.scrapers.depop import scrape_depop
+from app.scrapers.etsy import scrape_etsy
 from app.scrapers.discovery import get_active_keywords, run_discovery
 from app.trends.service import compute_and_store_scores
 
@@ -25,6 +26,7 @@ def scrape_all_sources():
         scrape_ebay(keyword)
         scrape_reddit(keyword)
         scrape_depop(keyword)
+        scrape_etsy(keyword)
 
     logger.info("Scheduled scrape complete")
 
@@ -61,6 +63,7 @@ def scrape_single_keyword(keyword: str):
     scrape_ebay(keyword)
     scrape_reddit(keyword)
     scrape_depop(keyword)
+    scrape_etsy(keyword)
     compute_and_store_scores(keyword)
     logger.info(f"On-demand scrape and scoring complete for '{keyword}'")
 
