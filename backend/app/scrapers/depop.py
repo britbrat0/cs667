@@ -3,66 +3,84 @@ import random
 import logging
 from datetime import datetime, timezone
 
-import requests
 from app.database import get_connection
 
 logger = logging.getLogger(__name__)
 
-# Depop's internal API used by their web frontend
-DEPOP_API_BASE = "https://webapi.depop.com/api/v2"
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Accept": "application/json",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Referer": "https://www.depop.com/",
-    "Origin": "https://www.depop.com",
-}
+DEPOP_SEARCH_URL = "https://www.depop.com/search/?q={keyword}&location=us"
 
 
 def scrape_depop(keyword: str) -> bool:
-    """Scrape Depop search results via their web API. Returns True on success."""
+    """Scrape Depop search results using Playwright headless browser. Returns True on success."""
     try:
-        url = f"{DEPOP_API_BASE}/search/products/"
-        params = {
-            "what": keyword,
-            "itemsPerPage": 48,
-            "country": "us",
-            "currency": "USD",
-        }
+        from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+    except ImportError:
+        logger.error("Playwright not installed — skipping Depop scraping")
+        return False
 
-        resp = requests.get(url, params=params, headers=HEADERS, timeout=20)
+    url = DEPOP_SEARCH_URL.format(keyword=keyword.replace(" ", "+"))
 
-        if resp.status_code == 403:
-            logger.warning(f"Depop API returned 403 for '{keyword}' — may need updated headers")
-            return True
-        if resp.status_code != 200:
-            logger.warning(f"Depop API returned {resp.status_code} for '{keyword}'")
-            return True
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ],
+            )
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                viewport={"width": 1280, "height": 800},
+                locale="en-US",
+            )
+            page = context.new_page()
 
-        data = resp.json()
-        products = data.get("products", [])
+            # Block images/fonts to speed up loading
+            page.route("**/*.{png,jpg,jpeg,gif,webp,svg,woff,woff2,ttf}", lambda route: route.abort())
 
-        if not products:
-            logger.warning(f"No Depop products found for '{keyword}'")
-            return True
+            page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
-        prices = []
-        for product in products:
-            price_info = product.get("price", {})
-            amount = price_info.get("priceAmount")
-            if amount:
-                try:
-                    price = float(amount)
-                    if 0 < price < 10000:
-                        prices.append(price)
-                except (ValueError, TypeError):
-                    continue
+            # Wait for product listings to appear
+            try:
+                page.wait_for_selector("[class*='productCardRoot']", timeout=15000)
+            except PlaywrightTimeout:
+                logger.warning(f"Depop: no product cards found for '{keyword}' (timeout)")
+                browser.close()
+                return True
 
-        listing_count = len(products)
+            # Small extra wait for prices to render
+            page.wait_for_timeout(2000)
+
+            # Extract prices from product cards
+            prices = page.evaluate("""
+                () => {
+                    const prices = [];
+                    const els = document.querySelectorAll('[class*="productAttributes"] p, [class*="Price"] p, [class*="price"] p');
+                    for (const el of els) {
+                        const text = el.textContent.trim();
+                        const match = text.match(/\\$([\\d,]+\\.?\\d*)/);
+                        if (match) {
+                            const val = parseFloat(match[1].replace(',', ''));
+                            if (val > 0 && val < 10000) prices.push(val);
+                        }
+                    }
+                    return prices;
+                }
+            """)
+
+            # Count product cards
+            listing_count = page.evaluate("""
+                () => document.querySelectorAll('[class*="productCardRoot"]').length
+            """)
+
+            browser.close()
+
         now = datetime.now(timezone.utc).isoformat()
-
         conn = get_connection()
+
         conn.execute(
             "INSERT INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
             (keyword, "depop", "listing_count", float(listing_count), now),
@@ -74,12 +92,20 @@ def scrape_depop(keyword: str) -> bool:
                 "INSERT INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
                 (keyword, "depop", "avg_price", avg_price, now),
             )
+            if len(prices) > 1:
+                variance = sum((p - avg_price) ** 2 for p in prices) / (len(prices) - 1)
+                volatility = variance ** 0.5
+                conn.execute(
+                    "INSERT INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
+                    (keyword, "depop", "price_volatility", volatility, now),
+                )
 
         conn.commit()
         conn.close()
 
-        logger.info(f"Depop scrape complete for '{keyword}': {listing_count} listings")
-        time.sleep(random.uniform(1, 3))
+        avg_str = f"${sum(prices)/len(prices):.2f}" if prices else "N/A"
+        logger.info(f"Depop scrape complete for '{keyword}': {listing_count} listings, avg {avg_str}")
+        time.sleep(random.uniform(2, 4))
         return True
 
     except Exception as e:
@@ -88,27 +114,43 @@ def scrape_depop(keyword: str) -> bool:
 
 
 def discover_trending_keywords() -> list[str]:
-    """Discover trending keywords from Depop. Returns list of candidate terms."""
+    """Discover trending keywords from Depop using Playwright."""
     try:
-        # Try the trending/explore endpoint
-        url = f"{DEPOP_API_BASE}/search/trending/"
-        resp = requests.get(url, headers=HEADERS, timeout=15)
+        from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+    except ImportError:
+        return []
 
-        candidates = []
-        if resp.status_code == 200:
-            data = resp.json()
-            terms = data.get("trending", data.get("keywords", []))
-            if isinstance(terms, list):
-                for term in terms:
-                    if isinstance(term, str):
-                        candidates.append(term.lower())
-                    elif isinstance(term, dict):
-                        name = term.get("name", term.get("keyword", ""))
-                        if name:
-                            candidates.append(name.lower())
+    candidates = []
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+            )
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                locale="en-US",
+            )
+            page = context.new_page()
+            page.route("**/*.{png,jpg,jpeg,gif,webp,svg,woff,woff2,ttf}", lambda route: route.abort())
 
-        return list(set(candidates))
+            page.goto("https://www.depop.com/", wait_until="domcontentloaded", timeout=30000)
+
+            try:
+                page.wait_for_selector("[class*='trending'], [class*='Trending'], [class*='popular']", timeout=8000)
+                terms = page.evaluate("""
+                    () => {
+                        const els = document.querySelectorAll('[class*="trending"] a, [class*="Trending"] a, [class*="popular"] a');
+                        return Array.from(els).map(el => el.textContent.trim().toLowerCase()).filter(t => t.length > 2);
+                    }
+                """)
+                candidates = list(set(terms))
+            except PlaywrightTimeout:
+                pass
+
+            browser.close()
 
     except Exception as e:
         logger.error(f"Depop discovery failed: {e}")
-        return []
+
+    return candidates
