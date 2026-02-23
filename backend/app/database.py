@@ -57,6 +57,16 @@ def init_db():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_comparisons (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            keyword TEXT NOT NULL,
+            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_email, keyword)
+        )
+    """)
+
     # Create indexes for common queries
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_trend_data_keyword ON trend_data(keyword)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_trend_data_recorded_at ON trend_data(recorded_at)")

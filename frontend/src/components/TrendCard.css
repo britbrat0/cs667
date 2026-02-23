@@ -94,6 +94,42 @@
   opacity: 0.4;
 }
 
+.trend-card__compare {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #888;
+  padding: 0.2rem 0.5rem;
+  opacity: 0;
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.trend-card:hover .trend-card__compare {
+  opacity: 1;
+}
+
+.trend-card__compare:hover {
+  border-color: #1a1a2e;
+  color: #1a1a2e;
+}
+
+.trend-card__compare--active {
+  opacity: 1 !important;
+  background: #1a1a2e;
+  border-color: #1a1a2e;
+  color: #fff;
+}
+
+.trend-card__compare--active:hover {
+  background: #e74c3c;
+  border-color: #e74c3c;
+  color: #fff;
+}
+
 .trend-card__details-hint {
   padding: 0 1.25rem 1rem;
   border-top: 1px solid #f0f0f0;

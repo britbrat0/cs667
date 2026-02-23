@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 import TrendCard from './TrendCard'
 import TrendDetail from './TrendDetail'
+import CompareSection from './CompareSection'
 import './Dashboard.css'
 
 export default function Dashboard() {
@@ -14,7 +15,9 @@ export default function Dashboard() {
   const [expandedKeyword, setExpandedKeyword] = useState(null)
   const [searchResult, setSearchResult] = useState(null)
   const [searchLoading, setSearchLoading] = useState(false)
-  const [view, setView] = useState('top') // 'top' or 'search'
+  const [view, setView] = useState('top') // 'top', 'search', or 'compare'
+  const [compareKeywords, setCompareKeywords] = useState([])
+  const compareSectionRef = useRef(null)
 
   useEffect(() => {
     fetchTopTrends()
@@ -72,6 +75,31 @@ export default function Dashboard() {
     }
   }
 
+  const handleCompare = async (keyword) => {
+    const kw = keyword.toLowerCase().trim()
+    const isInCompare = compareKeywords.includes(kw)
+    try {
+      if (isInCompare) {
+        await api.delete(`/compare/${encodeURIComponent(kw)}`)
+        setCompareKeywords(prev => prev.filter(k => k !== kw))
+      } else {
+        await api.post(`/compare/${encodeURIComponent(kw)}`)
+        setCompareKeywords(prev => [...prev, kw])
+        setView('compare')
+        setTimeout(() => compareSectionRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Sync compareKeywords from backend on mount
+  useEffect(() => {
+    api.get('/compare').then(res => {
+      setCompareKeywords((res.data.keywords || []))
+    }).catch(() => {})
+  }, [])
+
   return (
     <div className="dashboard">
       <header className="dashboard-header">
@@ -107,6 +135,24 @@ export default function Dashboard() {
       </div>
 
       <main className="dashboard-content">
+        <div className="dashboard-tabs">
+          <button
+            className={`dashboard-tab ${view !== 'search' && view !== 'compare' ? 'dashboard-tab--active' : ''}`}
+            onClick={() => { setView('top'); setSearchResult(null); setSearchQuery(''); setExpandedKeyword(null) }}
+          >
+            Top 10 Trends
+          </button>
+          <button
+            className={`dashboard-tab ${view === 'compare' ? 'dashboard-tab--active' : ''}`}
+            onClick={() => setView('compare')}
+          >
+            Compare
+            {compareKeywords.length > 0 && (
+              <span className="dashboard-tab__badge">{compareKeywords.length}</span>
+            )}
+          </button>
+        </div>
+
         {view === 'search' ? (
           <div className="search-results">
             <div className="search-results__header">
@@ -128,10 +174,15 @@ export default function Dashboard() {
               <p className="status-message">No results found. Try a different keyword.</p>
             )}
           </div>
+        ) : view === 'compare' ? (
+          <div ref={compareSectionRef}>
+            <CompareSection
+              compareKeywords={compareKeywords}
+              onKeywordsChange={setCompareKeywords}
+            />
+          </div>
         ) : (
           <>
-            <h2>Top 10 Emerging Trends</h2>
-
             {loading && <p className="status-message">Loading trends...</p>}
 
             {!loading && trends.length === 0 && (
@@ -153,6 +204,8 @@ export default function Dashboard() {
                       isExpanded={expandedKeyword === trend.keyword}
                       onClick={() => handleCardClick(trend.keyword)}
                       onRemove={handleRemoveKeyword}
+                      onCompare={handleCompare}
+                      inCompare={compareKeywords.includes(trend.keyword.toLowerCase())}
                     />
                     {expandedKeyword === trend.keyword && (
                       <TrendDetail keyword={trend.keyword} period={period} />

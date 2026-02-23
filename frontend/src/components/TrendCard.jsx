@@ -1,7 +1,7 @@
 import LifecycleBadge from './LifecycleBadge'
 import './TrendCard.css'
 
-export default function TrendCard({ trend, isExpanded, onClick, onRemove }) {
+export default function TrendCard({ trend, isExpanded, onClick, onRemove, onCompare, inCompare }) {
   const scoreColor = trend.composite_score > 0 ? '#27ae60' : trend.composite_score < 0 ? '#e74c3c' : '#666'
   const scorePrefix = trend.composite_score > 0 ? '+' : ''
   const isSeed = trend.source === 'seed'
@@ -9,6 +9,11 @@ export default function TrendCard({ trend, isExpanded, onClick, onRemove }) {
   const handleRemove = (e) => {
     e.stopPropagation()
     if (!isSeed && onRemove) onRemove(trend.keyword)
+  }
+
+  const handleCompare = (e) => {
+    e.stopPropagation()
+    if (onCompare) onCompare(trend.keyword)
   }
 
   return (
@@ -41,6 +46,13 @@ export default function TrendCard({ trend, isExpanded, onClick, onRemove }) {
               &#128465;
             </button>
           )}
+          <button
+            className={`trend-card__compare ${inCompare ? 'trend-card__compare--active' : ''}`}
+            onClick={handleCompare}
+            title={inCompare ? 'Remove from compare' : 'Add to compare'}
+          >
+            {inCompare ? '✓ Compare' : '+ Compare'}
+          </button>
           <span className="trend-card__expand">
             {isExpanded ? '\u25B2' : '\u25BC'}
           </span>
