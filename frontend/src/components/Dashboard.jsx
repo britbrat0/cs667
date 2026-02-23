@@ -5,6 +5,7 @@ import TrendCard from './TrendCard'
 import TrendDetail from './TrendDetail'
 import CompareSection from './CompareSection'
 import KeywordsPanel from './KeywordsPanel'
+import ChatBot from './ChatBot'
 import './Dashboard.css'
 
 export default function Dashboard() {
@@ -105,7 +106,8 @@ export default function Dashboard() {
   // Sync compareKeywords from backend on mount
   useEffect(() => {
     api.get('/compare').then(res => {
-      setCompareKeywords((res.data.keywords || []))
+      const kws = (res.data.keywords || []).map(k => typeof k === 'object' ? k.keyword : k)
+      setCompareKeywords(kws)
     }).catch(() => {})
   }, [])
 
@@ -239,6 +241,13 @@ export default function Dashboard() {
           </>
         )}
       </main>
+      <ChatBot context={{
+        view,
+        keyword: searchResult?.keyword || (expandedKeyword) || null,
+        trendData: searchResult || null,
+        topTrends: view === 'top' ? trends : [],
+        compareKeywords,
+      }} />
     </div>
   )
 }

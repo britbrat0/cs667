@@ -7,6 +7,7 @@ from app.database import init_db
 from app.auth.router import router as auth_router
 from app.trends.router import router as trends_router
 from app.compare.router import router as compare_router
+from app.chat.router import router as chat_router
 from app.scrapers.discovery import load_seed_keywords
 from app.scheduler.jobs import start_scheduler, stop_scheduler
 
@@ -28,6 +29,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(trends_router)
 app.include_router(compare_router)
+app.include_router(chat_router)
 
 
 @app.on_event("startup")

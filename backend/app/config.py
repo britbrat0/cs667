@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     etsy_api_key: str = os.getenv("ETSY_API_KEY", "")
 
+    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
+
     class Config:
         env_file = ".env"
 

@@ -67,6 +67,18 @@ def init_db():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON chat_messages(user_email)")
+
     # Create indexes for common queries
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_trend_data_keyword ON trend_data(keyword)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_trend_data_recorded_at ON trend_data(recorded_at)")
