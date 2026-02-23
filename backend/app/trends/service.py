@@ -52,7 +52,7 @@ def compute_composite_score(keyword: str, period_days: int) -> dict:
 
     # Price metrics: avg_price from eBay + Etsy
     price_rows = conn.execute(
-        "SELECT value, recorded_at FROM trend_data WHERE keyword = ? AND source IN ('ebay', 'etsy') AND metric = 'avg_price' AND recorded_at >= ? ORDER BY recorded_at",
+        "SELECT value, recorded_at FROM trend_data WHERE keyword = ? AND source IN ('ebay', 'etsy', 'poshmark') AND metric = 'avg_price' AND recorded_at >= ? ORDER BY recorded_at",
         (keyword, start.isoformat()),
     ).fetchall()
 
@@ -187,19 +187,19 @@ def get_keyword_details(keyword: str, period_days: int = 7) -> dict:
 
     # Avg price over time (eBay + Etsy combined)
     ebay_prices = conn.execute(
-        "SELECT value, recorded_at, source FROM trend_data WHERE keyword = ? AND source IN ('ebay', 'etsy') AND metric = 'avg_price' AND recorded_at >= ? ORDER BY recorded_at",
+        "SELECT value, recorded_at, source FROM trend_data WHERE keyword = ? AND source IN ('ebay', 'etsy', 'poshmark') AND metric = 'avg_price' AND recorded_at >= ? ORDER BY recorded_at",
         (keyword, start),
     ).fetchall()
 
     # Sales/listing volume over time (eBay + Etsy combined)
     sales_volume = conn.execute(
-        "SELECT value, recorded_at, source FROM trend_data WHERE keyword = ? AND source IN ('ebay', 'etsy') AND metric = 'sold_count' AND recorded_at >= ? ORDER BY recorded_at",
+        "SELECT value, recorded_at, source FROM trend_data WHERE keyword = ? AND source IN ('ebay', 'etsy', 'poshmark') AND metric = 'sold_count' AND recorded_at >= ? ORDER BY recorded_at",
         (keyword, start),
     ).fetchall()
 
     # Price volatility (latest from any source)
     volatility = conn.execute(
-        "SELECT value, recorded_at FROM trend_data WHERE keyword = ? AND source IN ('ebay', 'etsy') AND metric = 'price_volatility' AND recorded_at >= ? ORDER BY recorded_at DESC LIMIT 1",
+        "SELECT value, recorded_at FROM trend_data WHERE keyword = ? AND source IN ('ebay', 'etsy', 'poshmark') AND metric = 'price_volatility' AND recorded_at >= ? ORDER BY recorded_at DESC LIMIT 1",
         (keyword, start),
     ).fetchone()
 
