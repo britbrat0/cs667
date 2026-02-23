@@ -53,9 +53,45 @@
   font-size: 0.9rem;
 }
 
+.trend-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .trend-card__expand {
   color: #999;
   font-size: 0.7rem;
+}
+
+.trend-card__remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 0.2rem;
+  color: #e74c3c;
+  line-height: 1;
+}
+
+.trend-card:hover .trend-card__remove {
+  opacity: 0.6;
+}
+
+.trend-card__remove:hover {
+  opacity: 1 !important;
+}
+
+.trend-card__lock {
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.trend-card:hover .trend-card__lock {
+  opacity: 0.4;
 }
 
 .trend-card__details-hint {

@@ -62,6 +62,16 @@ export default function Dashboard() {
     setExpandedKeyword(expandedKeyword === keyword ? null : keyword)
   }
 
+  const handleRemoveKeyword = async (keyword) => {
+    try {
+      await api.delete(`/trends/keywords/${encodeURIComponent(keyword)}`)
+      setTrends(trends.filter(t => t.keyword !== keyword))
+      if (expandedKeyword === keyword) setExpandedKeyword(null)
+    } catch {
+      // Silently fail — seed keyword protection will show nothing
+    }
+  }
+
   return (
     <div className="dashboard">
       <header className="dashboard-header">
@@ -142,6 +152,7 @@ export default function Dashboard() {
                       trend={trend}
                       isExpanded={expandedKeyword === trend.keyword}
                       onClick={() => handleCardClick(trend.keyword)}
+                      onRemove={handleRemoveKeyword}
                     />
                     {expandedKeyword === trend.keyword && (
                       <TrendDetail keyword={trend.keyword} period={period} />

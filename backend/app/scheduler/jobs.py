@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta, timezone
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -9,6 +10,7 @@ from app.scrapers.depop import scrape_depop
 from app.scrapers.etsy import scrape_etsy
 from app.scrapers.poshmark import scrape_poshmark
 from app.scrapers.discovery import get_active_keywords, run_discovery
+from app.database import get_connection
 from app.trends.service import compute_and_store_scores
 
 logger = logging.getLogger(__name__)
@@ -58,6 +60,21 @@ def discover_keywords():
     run_discovery()
 
 
+def expire_stale_keywords():
+    """Deactivate user_search keywords not searched in the last 30 days."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    conn = get_connection()
+    result = conn.execute(
+        "UPDATE keywords SET status = 'inactive' WHERE source = 'user_search' AND status = 'active' AND (last_searched_at IS NULL OR last_searched_at < ?)",
+        (cutoff,),
+    )
+    expired = result.rowcount
+    conn.commit()
+    conn.close()
+    if expired:
+        logger.info(f"Auto-expired {expired} stale user-searched keyword(s)")
+
+
 def scrape_single_keyword(keyword: str):
     """On-demand scrape for a single keyword across all sources."""
     logger.info(f"On-demand scrape for '{keyword}'")
@@ -79,8 +96,11 @@ def start_scheduler():
     # Auto-discover new keywords every 24 hours
     scheduler.add_job(discover_keywords, "interval", hours=24, id="discover_keywords", replace_existing=True)
 
+    # Expire stale user-searched keywords daily
+    scheduler.add_job(expire_stale_keywords, "interval", hours=24, id="expire_stale_keywords", replace_existing=True)
+
     scheduler.start()
-    logger.info("Scheduler started: scrape_and_score every 6h, discover_keywords every 24h")
+    logger.info("Scheduler started: scrape_and_score every 6h, discover_keywords every 24h, expire_stale_keywords every 24h")
 
 
 def stop_scheduler():

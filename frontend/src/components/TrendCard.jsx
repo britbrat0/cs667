@@ -1,9 +1,15 @@
 import LifecycleBadge from './LifecycleBadge'
 import './TrendCard.css'
 
-export default function TrendCard({ trend, isExpanded, onClick }) {
+export default function TrendCard({ trend, isExpanded, onClick, onRemove }) {
   const scoreColor = trend.composite_score > 0 ? '#27ae60' : trend.composite_score < 0 ? '#e74c3c' : '#666'
   const scorePrefix = trend.composite_score > 0 ? '+' : ''
+  const isSeed = trend.source === 'seed'
+
+  const handleRemove = (e) => {
+    e.stopPropagation()
+    if (!isSeed && onRemove) onRemove(trend.keyword)
+  }
 
   return (
     <div
@@ -23,9 +29,22 @@ export default function TrendCard({ trend, isExpanded, onClick }) {
             )}
           </div>
         </div>
-        <span className="trend-card__expand">
-          {isExpanded ? '\u25B2' : '\u25BC'}
-        </span>
+        <div className="trend-card__actions">
+          {isSeed ? (
+            <span className="trend-card__lock" title="Seed keyword — protected">&#128274;</span>
+          ) : (
+            <button
+              className="trend-card__remove"
+              onClick={handleRemove}
+              title="Remove keyword"
+            >
+              &#128465;
+            </button>
+          )}
+          <span className="trend-card__expand">
+            {isExpanded ? '\u25B2' : '\u25BC'}
+          </span>
+        </div>
       </div>
 
       {isExpanded && (

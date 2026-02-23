@@ -33,9 +33,16 @@ def init_db():
             keyword TEXT UNIQUE NOT NULL,
             source TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'active',
-            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_searched_at TIMESTAMP
         )
     """)
+
+    # Migrate: add last_searched_at if it doesn't exist yet
+    try:
+        cursor.execute("ALTER TABLE keywords ADD COLUMN last_searched_at TIMESTAMP")
+    except Exception:
+        pass  # Column already exists
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS trend_scores (

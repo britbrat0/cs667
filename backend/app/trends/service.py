@@ -148,8 +148,10 @@ def get_top_trends(period_days: int = 7, limit: int = 10) -> list[dict]:
     """Get top N trends ranked by composite score for a given period."""
     conn = get_connection()
     rows = conn.execute(
-        "SELECT keyword, composite_score, volume_growth, price_growth, lifecycle_stage, computed_at "
-        "FROM trend_scores WHERE period_days = ? ORDER BY composite_score DESC LIMIT ?",
+        "SELECT ts.keyword, ts.composite_score, ts.volume_growth, ts.price_growth, ts.lifecycle_stage, ts.computed_at, k.source "
+        "FROM trend_scores ts LEFT JOIN keywords k ON ts.keyword = k.keyword "
+        "WHERE ts.period_days = ? AND (k.status IS NULL OR k.status != 'inactive') "
+        "ORDER BY ts.composite_score DESC LIMIT ?",
         (period_days, limit),
     ).fetchall()
     conn.close()
@@ -163,6 +165,7 @@ def get_top_trends(period_days: int = 7, limit: int = 10) -> list[dict]:
             "price_growth": row["price_growth"],
             "lifecycle_stage": row["lifecycle_stage"],
             "computed_at": row["computed_at"],
+            "source": row["source"] or "seed",
         }
         for i, row in enumerate(rows)
     ]
