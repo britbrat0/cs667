@@ -121,6 +121,13 @@ def trend_details(keyword: str, period: int = 7, user: str = Depends(get_current
     return details
 
 
+@router.get("/{keyword}/forecast")
+def trend_forecast(keyword: str, horizon: int = 14, user: str = Depends(get_current_user)):
+    """Forecast future search volume for a keyword using polynomial regression."""
+    from app.forecasting.model import forecast_search_volume
+    return forecast_search_volume(_normalize(keyword), horizon_days=horizon)
+
+
 @router.get("/{keyword}/regions")
 def trend_regions(keyword: str, scope: str = "us", user: str = Depends(get_current_user)):
     """Get region heatmap data for a keyword. scope: 'us' or 'global'."""

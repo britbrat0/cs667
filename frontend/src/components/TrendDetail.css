@@ -112,6 +112,121 @@
   font-weight: 600;
 }
 
+/* Forecast */
+.forecast-chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.forecast-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.forecast-toggle {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.forecast-toggle:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.forecast-toggle--active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.forecast-horizon-tabs {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.forecast-horizon-tab {
+  background: none;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #aaa;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.forecast-horizon-tab:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.forecast-horizon-tab--active {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.forecast-status {
+  font-size: 0.82rem;
+  color: #999;
+  margin: 0;
+}
+
+.forecast-error {
+  font-size: 0.82rem;
+  color: #e74c3c;
+  margin: 0;
+}
+
+.forecast-legend {
+  font-size: 0.75rem;
+  color: #888;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.forecast-legend__historical {
+  display: inline-block;
+  width: 20px;
+  height: 2px;
+  background: #1a1a2e;
+  vertical-align: middle;
+}
+
+.forecast-legend__forecast {
+  display: inline-block;
+  width: 20px;
+  height: 2px;
+  background: #2563eb;
+  border-top: 2px dashed #2563eb;
+  vertical-align: middle;
+}
+
+.forecast-legend__band {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  background: rgba(37, 99, 235, 0.15);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  vertical-align: middle;
+  border-radius: 2px;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .trend-detail {
