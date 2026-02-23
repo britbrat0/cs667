@@ -179,6 +179,7 @@ export default function Dashboard() {
             <CompareSection
               compareKeywords={compareKeywords}
               onKeywordsChange={setCompareKeywords}
+              period={period}
             />
           </div>
         ) : (

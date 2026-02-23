@@ -4,10 +4,10 @@ import CompareChart from './Charts/CompareChart'
 import LifecycleBadge from './LifecycleBadge'
 import './CompareSection.css'
 
-const COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c']
+const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#0891b2', '#b45309', '#0f766e']
 const MAX_COMPARE = 6
 
-export default function CompareSection({ compareKeywords, onKeywordsChange }) {
+export default function CompareSection({ compareKeywords, onKeywordsChange, period = 30 }) {
   const [compareData, setCompareData] = useState({ keywords: [], series: [] })
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(true)
@@ -16,12 +16,12 @@ export default function CompareSection({ compareKeywords, onKeywordsChange }) {
 
   useEffect(() => {
     fetchCompareData()
-  }, [])
+  }, [period])
 
   const fetchCompareData = async () => {
     setLoading(true)
     try {
-      const res = await api.get('/compare/data')
+      const res = await api.get('/compare/data', { params: { period } })
       setCompareData(res.data)
       if (onKeywordsChange) onKeywordsChange(res.data.keywords || [])
     } catch {

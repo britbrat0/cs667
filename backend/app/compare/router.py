@@ -105,7 +105,7 @@ def clear_comparison(user: str = Depends(get_current_user)):
 
 
 @router.get("/data")
-def get_comparison_data(user: str = Depends(get_current_user)):
+def get_comparison_data(period: int = 30, user: str = Depends(get_current_user)):
     """Get time series data for all keywords in the user's comparison list."""
     conn = get_connection()
 
@@ -119,7 +119,7 @@ def get_comparison_data(user: str = Depends(get_current_user)):
         conn.close()
         return {"keywords": [], "series": []}
 
-    start = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    start = (datetime.now(timezone.utc) - timedelta(days=period)).isoformat()
     series = []
 
     for kw in keywords:
