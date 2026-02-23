@@ -1,4 +1,6 @@
 import logging
+import time
+import random
 from datetime import datetime, timedelta, timezone
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -31,6 +33,7 @@ def scrape_all_sources():
         scrape_depop(keyword)
         scrape_etsy(keyword)
         scrape_poshmark(keyword)
+        time.sleep(random.uniform(5, 10))  # pause between keywords to avoid rate limits
 
     logger.info("Scheduled scrape complete")
 

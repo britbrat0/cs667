@@ -6,12 +6,15 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  LabelList,
 } from 'recharts'
 
 export default function SalesVolumeChart({ data }) {
   if (!data || data.length === 0) {
     return <p className="chart-empty">No sales volume data available</p>
   }
+
+  const sparse = data.length < 3
 
   const formatted = data.map((d) => ({
     date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -27,7 +30,9 @@ export default function SalesVolumeChart({ data }) {
           <XAxis dataKey="date" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip />
-          <Bar dataKey="sold" fill="#16213e" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="sold" fill="#16213e" radius={[4, 4, 0, 0]}>
+            {sparse && <LabelList dataKey="sold" position="top" style={{ fontSize: 11, fill: '#555' }} />}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>

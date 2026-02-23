@@ -188,15 +188,19 @@ def get_keyword_details(keyword: str, period_days: int = 7) -> dict:
         (keyword, start),
     ).fetchall()
 
-    # Avg price over time (eBay + Etsy combined)
+    # Avg price over time — one point per day, averaged across all marketplace sources
     ebay_prices = conn.execute(
-        "SELECT value, recorded_at, source FROM trend_data WHERE keyword = ? AND source IN ('ebay', 'etsy', 'poshmark', 'depop') AND metric = 'avg_price' AND recorded_at >= ? ORDER BY recorded_at",
+        "SELECT AVG(value) as value, DATE(recorded_at) as recorded_at FROM trend_data "
+        "WHERE keyword = ? AND source IN ('ebay', 'etsy', 'poshmark', 'depop') AND metric = 'avg_price' AND recorded_at >= ? "
+        "GROUP BY DATE(recorded_at) ORDER BY recorded_at",
         (keyword, start),
     ).fetchall()
 
-    # Sales/listing volume over time (eBay + Etsy combined)
+    # Sales/listing volume over time — one point per day, summed across sources
     sales_volume = conn.execute(
-        "SELECT value, recorded_at, source FROM trend_data WHERE keyword = ? AND source IN ('ebay', 'etsy', 'poshmark', 'depop') AND metric = 'sold_count' AND recorded_at >= ? ORDER BY recorded_at",
+        "SELECT SUM(value) as value, DATE(recorded_at) as recorded_at FROM trend_data "
+        "WHERE keyword = ? AND source IN ('ebay', 'etsy', 'poshmark', 'depop') AND metric IN ('sold_count', 'listing_count') AND recorded_at >= ? "
+        "GROUP BY DATE(recorded_at) ORDER BY recorded_at",
         (keyword, start),
     ).fetchall()
 

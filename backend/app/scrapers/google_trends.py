@@ -9,8 +9,21 @@ from app.database import get_connection
 logger = logging.getLogger(__name__)
 
 
-def scrape_google_trends(keyword: str) -> bool:
-    """Scrape Google Trends for a keyword. Returns True on success."""
+def scrape_google_trends(keyword: str, retries: int = 3) -> bool:
+    """Scrape Google Trends for a keyword. Retries up to `retries` times on 429. Returns True on success."""
+    for attempt in range(retries):
+        result = _scrape_google_trends_once(keyword)
+        if result:
+            return True
+        wait = 60 * (2 ** attempt)  # 60s, 120s, 240s
+        logger.warning(f"Google Trends rate limited for '{keyword}', retrying in {wait}s (attempt {attempt + 1}/{retries})")
+        time.sleep(wait)
+    logger.error(f"Google Trends scrape failed for '{keyword}' after {retries} attempts")
+    return False
+
+
+def _scrape_google_trends_once(keyword: str) -> bool:
+    """Single attempt to scrape Google Trends for a keyword."""
     try:
         pytrends = TrendReq(hl="en-US", tz=360)
         pytrends.build_payload([keyword], timeframe="today 3-m", geo="US")

@@ -123,11 +123,11 @@ def get_comparison_data(period: int = 30, user: str = Depends(get_current_user))
     series = []
 
     for kw in keywords:
-        # Search volume time series
+        # Search volume time series — one point per day
         volume_rows = conn.execute(
-            "SELECT value, recorded_at FROM trend_data "
+            "SELECT AVG(value) as value, DATE(recorded_at) as recorded_at FROM trend_data "
             "WHERE keyword = ? AND source = 'google_trends' AND metric = 'search_volume' "
-            "AND recorded_at >= ? ORDER BY recorded_at ASC",
+            "AND recorded_at >= ? GROUP BY DATE(recorded_at) ORDER BY recorded_at ASC",
             (kw, start),
         ).fetchall()
 

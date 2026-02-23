@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 import TrendCard from './TrendCard'
 import TrendDetail from './TrendDetail'
 import CompareSection from './CompareSection'
+import KeywordsPanel from './KeywordsPanel'
 import './Dashboard.css'
 
 export default function Dashboard() {
@@ -17,7 +18,6 @@ export default function Dashboard() {
   const [searchLoading, setSearchLoading] = useState(false)
   const [view, setView] = useState('top') // 'top', 'search', or 'compare'
   const [compareKeywords, setCompareKeywords] = useState([])
-  const compareSectionRef = useRef(null)
 
   useEffect(() => {
     fetchTopTrends()
@@ -78,18 +78,27 @@ export default function Dashboard() {
   const handleCompare = async (keyword) => {
     const kw = keyword.toLowerCase().trim()
     const isInCompare = compareKeywords.includes(kw)
+
+    // Optimistically update UI immediately
+    if (isInCompare) {
+      setCompareKeywords(prev => prev.filter(k => k !== kw))
+    } else {
+      setCompareKeywords(prev => [...prev, kw])
+    }
+
     try {
       if (isInCompare) {
         await api.delete(`/compare/${encodeURIComponent(kw)}`)
-        setCompareKeywords(prev => prev.filter(k => k !== kw))
       } else {
         await api.post(`/compare/${encodeURIComponent(kw)}`)
-        setCompareKeywords(prev => [...prev, kw])
-        setView('compare')
-        setTimeout(() => compareSectionRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
       }
     } catch {
-      // ignore
+      // Revert optimistic update on failure
+      if (isInCompare) {
+        setCompareKeywords(prev => [...prev, kw])
+      } else {
+        setCompareKeywords(prev => prev.filter(k => k !== kw))
+      }
     }
   }
 
@@ -117,7 +126,7 @@ export default function Dashboard() {
             className="search-input"
           />
           <button type="submit" className="search-btn" disabled={searchLoading}>
-            {searchLoading ? 'Searching...' : 'Search'}
+            {searchLoading ? 'Scraping...' : 'Search'}
           </button>
         </form>
 
@@ -137,10 +146,16 @@ export default function Dashboard() {
       <main className="dashboard-content">
         <div className="dashboard-tabs">
           <button
-            className={`dashboard-tab ${view !== 'search' && view !== 'compare' ? 'dashboard-tab--active' : ''}`}
+            className={`dashboard-tab ${view !== 'search' && view !== 'compare' && view !== 'keywords' ? 'dashboard-tab--active' : ''}`}
             onClick={() => { setView('top'); setSearchResult(null); setSearchQuery(''); setExpandedKeyword(null) }}
           >
             Top 10 Trends
+          </button>
+          <button
+            className={`dashboard-tab ${view === 'keywords' ? 'dashboard-tab--active' : ''}`}
+            onClick={() => setView('keywords')}
+          >
+            Track
           </button>
           <button
             className={`dashboard-tab ${view === 'compare' ? 'dashboard-tab--active' : ''}`}
@@ -174,8 +189,14 @@ export default function Dashboard() {
               <p className="status-message">No results found. Try a different keyword.</p>
             )}
           </div>
+        ) : view === 'keywords' ? (
+          <KeywordsPanel
+            compareKeywords={compareKeywords}
+            onCompare={handleCompare}
+            period={period}
+          />
         ) : view === 'compare' ? (
-          <div ref={compareSectionRef}>
+          <div>
             <CompareSection
               compareKeywords={compareKeywords}
               onKeywordsChange={setCompareKeywords}
