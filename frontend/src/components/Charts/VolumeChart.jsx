@@ -37,9 +37,9 @@ export default function VolumeChart({ data, forecastData }) {
             <Line
               type="monotone"
               dataKey="value"
-              stroke="#1a1a2e"
+              stroke="#111111"
               strokeWidth={2}
-              dot={sparse ? { r: 5, fill: '#1a1a2e' } : false}
+              dot={sparse ? { r: 5, fill: '#111111' } : false}
               activeDot={{ r: 4 }}
             >
               {sparse && <LabelList dataKey="value" position="top" style={{ fontSize: 11, fill: '#555' }} />}
@@ -91,7 +91,7 @@ export default function VolumeChart({ data, forecastData }) {
             type="monotone"
             dataKey="upper"
             stroke="none"
-            fill="#2563eb"
+            fill="#cc3333"
             fillOpacity={0.1}
             legendType="none"
             tooltipType="none"
@@ -113,7 +113,7 @@ export default function VolumeChart({ data, forecastData }) {
           <Line
             type="monotone"
             dataKey="value"
-            stroke="#1a1a2e"
+            stroke="#111111"
             strokeWidth={2}
             dot={false}
             activeDot={{ r: 4 }}
@@ -123,7 +123,7 @@ export default function VolumeChart({ data, forecastData }) {
           <Line
             type="monotone"
             dataKey="forecast"
-            stroke="#2563eb"
+            stroke="#cc3333"
             strokeWidth={2}
             strokeDasharray="6 3"
             dot={false}

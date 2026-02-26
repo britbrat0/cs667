@@ -123,16 +123,24 @@ def scrape_ebay(keyword: str) -> bool:
             return True
 
         prices = []
+        images_to_store = []
         for item in items:
             price_info = item.get("price", {})
             value = price_info.get("value")
+            item_price = None
             if value:
                 try:
-                    price = float(value)
-                    if 0 < price < 50000:
-                        prices.append(price)
+                    item_price = float(value)
+                    if 0 < item_price < 50000:
+                        prices.append(item_price)
                 except (ValueError, TypeError):
-                    continue
+                    pass
+
+            image_url = item.get("image", {}).get("imageUrl")
+            item_url = item.get("itemWebUrl")
+            title = item.get("title")
+            if image_url and len(images_to_store) < 6:
+                images_to_store.append((keyword, "ebay", image_url, title, item_price, item_url))
 
         if not prices:
             logger.warning(f"No parseable eBay prices for '{keyword}'")
@@ -163,6 +171,21 @@ def scrape_ebay(keyword: str) -> bool:
             "INSERT INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
             (keyword, "ebay", "price_volatility", volatility, now),
         )
+
+        for img in images_to_store:
+            conn.execute(
+                "INSERT OR IGNORE INTO trend_images (keyword, source, image_url, title, price, item_url) VALUES (?, ?, ?, ?, ?, ?)",
+                img,
+            )
+
+        # Prune to 8 most recent images per keyword
+        conn.execute(
+            """DELETE FROM trend_images WHERE keyword = ? AND id NOT IN (
+                SELECT id FROM trend_images WHERE keyword = ? ORDER BY scraped_at DESC LIMIT 8
+            )""",
+            (keyword, keyword),
+        )
+
         conn.commit()
         conn.close()
 

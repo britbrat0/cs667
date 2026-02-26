@@ -154,7 +154,12 @@ export default function KeywordsPanel({ compareKeywords = [], onCompare, period 
               return (
                 <>
                   <tr key={kw.keyword} className={isExpanded ? 'kw-row--expanded' : ''}>
-                    <td className="keywords-table__keyword">{kw.keyword}</td>
+                    <td className="keywords-table__keyword">
+                      {kw.keyword}
+                      {kw.scale === 'micro' && (
+                        <span className="kw-micro-badge">Micro Trend</span>
+                      )}
+                    </td>
                     <td>
                       <span className={`kw-source-badge kw-source-badge--${kw.source === 'seed' ? 'seed' : 'user'}`}>
                         {kw.source === 'seed' ? '🌱 seed' : '👤 user'}

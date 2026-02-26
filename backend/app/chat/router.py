@@ -82,6 +82,10 @@ def _build_context_block(context: dict) -> str:
                 f"  #{t.get('rank')} {t.get('keyword')} — score {t.get('composite_score', '—')}, {t.get('lifecycle_stage', '—')}"
             )
 
+    tracked = context.get("trackedKeywords")
+    if tracked:
+        lines.append(f"- All tracked keywords ({len(tracked)} total): {', '.join(tracked)}")
+
     compare_keywords = context.get("compareKeywords")
     if compare_keywords:
         kw_names = [k["keyword"] if isinstance(k, dict) else str(k) for k in compare_keywords]

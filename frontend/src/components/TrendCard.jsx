@@ -1,7 +1,17 @@
+import { useState, useEffect } from 'react'
+import api from '../services/api'
 import LifecycleBadge from './LifecycleBadge'
 import './TrendCard.css'
 
 export default function TrendCard({ trend, isExpanded, onClick, onRemove, onCompare, inCompare }) {
+  const [thumbs, setThumbs] = useState([])
+
+  useEffect(() => {
+    api
+      .get(`/trends/${encodeURIComponent(trend.keyword)}/images`)
+      .then((res) => setThumbs((res.data.images || []).slice(0, 1)))
+      .catch(() => {})
+  }, [trend.keyword])
   const scoreColor = trend.composite_score > 0 ? '#27ae60' : trend.composite_score < 0 ? '#e74c3c' : '#666'
   const scorePrefix = trend.composite_score > 0 ? '+' : ''
   const isSeed = trend.source === 'seed'
@@ -32,8 +42,25 @@ export default function TrendCard({ trend, isExpanded, onClick, onRemove, onComp
             {trend.lifecycle_stage && (
               <LifecycleBadge stage={trend.lifecycle_stage} size="small" />
             )}
+            {trend.scale === 'micro' && (
+              <span className="trend-card__micro-badge">Micro Trend</span>
+            )}
           </div>
         </div>
+        {thumbs.length > 0 && (
+          <div className="trend-card__thumbs">
+            {thumbs.map((img, i) => (
+              <img
+                key={i}
+                src={img.image_url}
+                alt={img.title || trend.keyword}
+                className="trend-card__thumb"
+                loading="lazy"
+              />
+            ))}
+          </div>
+        )}
+
         <div className="trend-card__actions">
           {isSeed ? (
             <span className="trend-card__lock" title="Seed keyword — protected">&#128274;</span>

@@ -1,6 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
-const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#0891b2', '#b45309', '#0f766e']
+const COLORS = ['#cc3333', '#7c3aed', '#db2777', '#0891b2', '#b45309', '#0f766e']
 
 export default function CompareChart({ series }) {
   if (!series || series.length === 0) return null

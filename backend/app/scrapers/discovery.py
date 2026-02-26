@@ -1,6 +1,8 @@
 import json
 import logging
+import math
 import re
+import time
 from collections import Counter
 
 from app.config import settings
@@ -28,6 +30,240 @@ STOP_WORDS = {
     "look", "looking", "got", "get", "new", "like", "help", "want",
     "think", "know", "find", "anyone", "advice", "opinion", "thoughts",
 }
+
+
+def find_similar_keyword(keyword: str, conn, confirm: bool = True) -> str | None:
+    """Use Claude to check if any existing tracked keyword refers to the same fashion trend.
+    Returns the matching existing keyword, or None if no duplicate found.
+    Falls back to None (allow the keyword) if the API key is not set or the call fails.
+    confirm=True (default): requires a second confirmation call before returning a match (for auto-merging).
+    confirm=False: trusts the first call result (for user-facing suggestions where the user decides)."""
+    if not settings.anthropic_api_key:
+        return None
+
+    rows = conn.execute(
+        "SELECT keyword FROM keywords WHERE status != 'inactive'"
+    ).fetchall()
+    existing = [row["keyword"] for row in rows if row["keyword"] != keyword]
+
+    if not existing:
+        return None
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+        keywords_list = "\n".join(f"- {k}" for k in existing)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=50,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f'New fashion trend keyword: "{keyword}"\n\n'
+                    f"Existing tracked keywords:\n{keywords_list}\n\n"
+                    "Is the new keyword an EXACT SYNONYM of any existing keyword — meaning two different names "
+                    "for the literally identical item or trend? "
+                    "Examples of true synonyms: 'draped top' = 'draped top blouse', 'barrel leg jeans' = 'barrel jeans'. "
+                    "Distinct named aesthetics, styles, or movements are NEVER duplicates, even if they share "
+                    "visual overlap or mood (e.g. 'goth' ≠ 'dark academia', 'quiet luxury' ≠ 'old money', "
+                    "'cottagecore' ≠ 'boho', 'minimalism' ≠ 'quiet luxury'). "
+                    "Only reply with a matching keyword if you are certain they are two names for the exact same thing. "
+                    "When in doubt, reply none. "
+                    "Reply with ONLY the exact matching keyword from the list above, or reply with ONLY the word: none"
+                ),
+            }],
+        )
+
+        reply = response.content[0].text.strip().lower()
+        if reply == "none":
+            return None
+
+        # Match reply against existing keywords (case-insensitive)
+        matched = None
+        for k in existing:
+            if k.lower() == reply:
+                matched = k
+                break
+
+        if not matched:
+            return None
+
+        if not confirm:
+            return matched  # Caller (user suggestion UI) will let the user decide
+
+        # Second confirmation: verify the match is truly an exact synonym, not just related
+        confirm_resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=10,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f'Are "{keyword}" and "{matched}" literally two different names for the '
+                    f"exact same fashion trend or item — not just related, similar, or overlapping, "
+                    f"but the exact same thing with different wording? "
+                    f"(e.g. 'draped top' and 'draped blouse' = YES. "
+                    f"'goth' and 'dark academia' = NO. 'quiet luxury' and 'old money' = NO.) "
+                    f"Answer with ONLY: YES or NO"
+                ),
+            }],
+        )
+        confirmed = confirm_resp.content[0].text.strip().upper()
+        if confirmed == "YES":
+            return matched
+
+        return None
+
+    except Exception as e:
+        logger.warning(f"Claude similarity check failed for '{keyword}': {e}")
+        return None
+
+
+def classify_keyword_scale(keyword: str) -> str:
+    """Use Claude to classify a keyword as 'macro' or 'micro' fashion trend.
+    Macro = broad aesthetic, movement, era, or style philosophy.
+    Micro = specific garment, accessory, material, or item.
+    Falls back to 'macro' on failure."""
+    if not settings.anthropic_api_key:
+        return "macro"
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=10,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f'Fashion keyword: "{keyword}"\n\n'
+                    "Classify as MACRO or MICRO using these criteria:\n\n"
+                    "MACRO = long-term (years/decades), broad societal or industry shift, "
+                    "driven by deep cultural value changes, adopted mainstream. "
+                    "Examples: quiet luxury, old money, gorpcore, maximalism, sustainability, minimalism, utility wear.\n\n"
+                    "MICRO = short-lived (weeks/months), niche, accelerated by social media virality, "
+                    "fades quickly, adopted by trend-conscious minority. "
+                    "Examples: barbiecore, mob wife aesthetic, cottagecore, dark academia, blokecore, "
+                    "tenniscore, ballet flats, cherry red, barrel-leg jeans.\n\n"
+                    "Key question: Is this a lasting cultural shift (macro) or a social-media-driven fad (micro)?\n"
+                    "Reply with ONLY one word: macro or micro"
+                ),
+            }],
+        )
+        result = response.content[0].text.strip().lower()
+        return "micro" if "micro" in result else "macro"
+    except Exception as e:
+        logger.warning(f"Scale classification failed for '{keyword}': {e}")
+        return "macro"
+
+
+def backfill_scale_classifications(force: bool = False):
+    """Classify all keywords that don't have a scale assigned yet. Runs at startup.
+    Pass force=True to re-classify all keywords regardless of existing scale."""
+    conn = get_connection()
+    query = "SELECT keyword FROM keywords WHERE status != 'inactive'" if force else \
+            "SELECT keyword FROM keywords WHERE scale IS NULL AND status != 'inactive'"
+    rows = conn.execute(query).fetchall()
+    conn.close()
+
+    keywords = [r["keyword"] for r in rows]
+    if not keywords:
+        return
+
+    logger.info(f"Backfilling scale classifications for {len(keywords)} keywords")
+    for keyword in keywords:
+        scale = classify_keyword_scale(keyword)
+        conn = get_connection()
+        conn.execute("UPDATE keywords SET scale = ? WHERE keyword = ?", (scale, keyword))
+        conn.commit()
+        conn.close()
+        logger.info(f"Scale: '{keyword}' → {scale}")
+        time.sleep(0.3)
+
+
+def refine_scale_classifications():
+    """Periodically review keyword scale classifications using statistical signals from
+    accumulated data. Only overrides the current classification when evidence is strong.
+
+    Signals used:
+      - CV (coefficient of variation) of search volume: high = volatile = micro
+      - Variance of composite score across time windows (7/14/30/60/90d): high = micro
+
+    Thresholds are intentionally conservative — both signals must agree before
+    overriding, and a minimum of 5 search-volume points is required.
+    """
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT keyword, scale FROM keywords WHERE status = 'active'"
+    ).fetchall()
+    conn.close()
+
+    updates = 0
+    skipped = 0
+
+    for row in rows:
+        keyword = row["keyword"]
+        current_scale = row["scale"] or "macro"
+
+        conn = get_connection()
+
+        # All historical search volume points for this keyword
+        sv_rows = conn.execute(
+            "SELECT value FROM trend_data WHERE keyword = ? AND metric = 'search_volume' ORDER BY recorded_at",
+            (keyword,),
+        ).fetchall()
+
+        # Composite scores across all stored time windows
+        score_rows = conn.execute(
+            "SELECT composite_score FROM trend_scores WHERE keyword = ? AND composite_score IS NOT NULL",
+            (keyword,),
+        ).fetchall()
+
+        conn.close()
+
+        sv_values = [r["value"] for r in sv_rows]
+        scores = [r["composite_score"] for r in score_rows]
+
+        # Require sufficient data before trusting the statistics
+        if len(sv_values) < 5 or len(scores) < 3:
+            skipped += 1
+            continue
+
+        # Coefficient of variation of search volume
+        mean_sv = sum(sv_values) / len(sv_values)
+        if mean_sv == 0:
+            skipped += 1
+            continue
+        std_sv = math.sqrt(sum((v - mean_sv) ** 2 for v in sv_values) / len(sv_values))
+        cv = std_sv / mean_sv
+
+        # Variance of composite score across time windows
+        mean_score = sum(scores) / len(scores)
+        score_variance = sum((s - mean_score) ** 2 for s in scores) / len(scores)
+
+        # Strong micro: high volatility confirmed by both signals
+        if cv > 0.65 and score_variance > 1500:
+            new_scale = "micro"
+        # Strong macro: very stable confirmed by both signals
+        elif cv < 0.15 and score_variance < 150:
+            new_scale = "macro"
+        else:
+            # Evidence is ambiguous — trust the existing classification
+            continue
+
+        if new_scale != current_scale:
+            conn = get_connection()
+            conn.execute("UPDATE keywords SET scale = ? WHERE keyword = ?", (new_scale, keyword))
+            conn.commit()
+            conn.close()
+            logger.info(
+                f"Scale refined: '{keyword}' {current_scale} → {new_scale} "
+                f"(CV={cv:.2f}, score_var={score_variance:.0f}, n={len(sv_values)} points)"
+            )
+            updates += 1
+
+    logger.info(
+        f"Scale refinement complete: {updates} updated, {skipped} skipped (insufficient data)"
+    )
 
 
 def load_seed_keywords():
@@ -104,12 +340,20 @@ def run_discovery():
     new_count = 0
     for candidate in all_candidates:
         candidate = candidate.lower().strip()
-        if candidate and candidate not in existing_set and len(candidate) > 2:
-            conn.execute(
-                "INSERT OR IGNORE INTO keywords (keyword, source, status) VALUES (?, 'auto_discovered', 'pending_review')",
-                (candidate,),
-            )
-            new_count += 1
+        if not candidate or len(candidate) <= 2:
+            continue
+        if candidate in existing_set:
+            continue
+        similar = find_similar_keyword(candidate, conn)
+        if similar:
+            logger.debug(f"Discovery: skipping '{candidate}' — similar to existing '{similar}'")
+            continue
+        conn.execute(
+            "INSERT OR IGNORE INTO keywords (keyword, source, status) VALUES (?, 'auto_discovered', 'pending_review')",
+            (candidate,),
+        )
+        existing_set.add(candidate)
+        new_count += 1
 
     conn.commit()
     conn.close()

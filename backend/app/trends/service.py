@@ -62,7 +62,12 @@ def compute_composite_score(keyword: str, period_days: int) -> dict:
 
     composite_score = 0.6 * volume_growth + 0.4 * price_growth
 
-    lifecycle_stage = _detect_lifecycle(keyword, volume_growth, composite_score, conn, start)
+    scale_row = conn.execute(
+        "SELECT scale FROM keywords WHERE keyword = ?", (keyword,)
+    ).fetchone()
+    scale = (scale_row["scale"] if scale_row and scale_row["scale"] else "macro")
+
+    lifecycle_stage = _detect_lifecycle(keyword, volume_growth, composite_score, conn, start, scale)
 
     conn.close()
 
@@ -73,12 +78,13 @@ def compute_composite_score(keyword: str, period_days: int) -> dict:
         "price_growth": round(price_growth, 2),
         "composite_score": round(composite_score, 2),
         "lifecycle_stage": lifecycle_stage,
+        "scale": scale,
     }
 
 
-def _detect_lifecycle(keyword: str, volume_growth: float, composite_score: float, conn, start) -> str:
-    """Determine lifecycle stage based on volume levels and growth trajectory."""
-    # Get total recent volume to assess absolute level
+def _detect_lifecycle(keyword: str, volume_growth: float, composite_score: float, conn, start, scale: str = "macro") -> str:
+    """Determine lifecycle stage based on volume levels and growth trajectory.
+    Scale-aware: micro trends use lower absolute volume thresholds."""
     volume_rows = conn.execute(
         "SELECT SUM(value) as total FROM trend_data WHERE keyword = ? AND metric IN ('search_volume', 'sold_count', 'mention_count', 'listing_count') AND recorded_at >= ?",
         (keyword, start.isoformat()),
@@ -86,28 +92,26 @@ def _detect_lifecycle(keyword: str, volume_growth: float, composite_score: float
 
     total_volume = volume_rows["total"] if volume_rows["total"] else 0
 
-    # Check for previous composite scores to detect acceleration
     prev_scores = conn.execute(
         "SELECT composite_score FROM trend_scores WHERE keyword = ? ORDER BY computed_at DESC LIMIT 3",
         (keyword,),
     ).fetchall()
-
     prev_score_values = [r["composite_score"] for r in prev_scores if r["composite_score"] is not None]
+    acceleration = (composite_score - prev_score_values[0]) if len(prev_score_values) >= 2 else 0
 
-    # Determine acceleration (is growth itself increasing?)
-    if len(prev_score_values) >= 2:
-        acceleration = composite_score - prev_score_values[0]
-    else:
-        acceleration = 0
+    # Micro trends operate at much lower absolute volumes
+    is_micro = scale == "micro"
+    dormant_thresh = 2 if is_micro else 5
+    emerging_vol_thresh = 15 if is_micro else 100
+    peak_vol_thresh = 5 if is_micro else 50
 
-    # Classification logic
-    if total_volume < 5:
+    if total_volume < dormant_thresh:
         return "Dormant"
-    elif volume_growth > 30 and total_volume < 100:
+    elif volume_growth > 30 and total_volume < emerging_vol_thresh:
         return "Emerging"
     elif volume_growth > 20 and acceleration > 0:
         return "Accelerating"
-    elif -5 <= volume_growth <= 10 and total_volume > 50:
+    elif -5 <= volume_growth <= 10 and total_volume > peak_vol_thresh:
         if acceleration <= 0:
             return "Peak"
         return "Accelerating"
@@ -145,29 +149,48 @@ def compute_and_store_scores(keyword: str):
 
 
 def get_top_trends(period_days: int = 7, limit: int = 10) -> list[dict]:
-    """Get top N trends ranked by composite score for a given period."""
+    """Get top N trends ranked by composite score for a given period.
+    Uses within-group percentile ranking so micro trends can surface alongside macro trends."""
     conn = get_connection()
     rows = conn.execute(
-        "SELECT ts.keyword, ts.composite_score, ts.volume_growth, ts.price_growth, ts.lifecycle_stage, ts.computed_at, k.source "
+        "SELECT ts.keyword, ts.composite_score, ts.volume_growth, ts.price_growth, ts.lifecycle_stage, ts.computed_at, k.source, COALESCE(k.scale, 'macro') as scale "
         "FROM trend_scores ts LEFT JOIN keywords k ON ts.keyword = k.keyword "
         "WHERE ts.period_days = ? AND (k.status IS NULL OR k.status != 'inactive') "
-        "ORDER BY ts.composite_score DESC LIMIT ?",
-        (period_days, limit),
+        "ORDER BY ts.composite_score DESC",
+        (period_days,),
     ).fetchall()
     conn.close()
+
+    all_trends = [dict(r) for r in rows]
+
+    macro = sorted([t for t in all_trends if t["scale"] == "macro"], key=lambda t: t["composite_score"] or 0, reverse=True)
+    micro = sorted([t for t in all_trends if t["scale"] == "micro"], key=lambda t: t["composite_score"] or 0, reverse=True)
+
+    def assign_percentile(group):
+        n = len(group)
+        for i, t in enumerate(group):
+            t["_pct"] = (n - i) / n if n > 0 else 0.5
+        return group
+
+    combined = sorted(
+        assign_percentile(macro) + assign_percentile(micro),
+        key=lambda t: t["_pct"],
+        reverse=True,
+    )
 
     return [
         {
             "rank": i + 1,
-            "keyword": row["keyword"],
-            "composite_score": row["composite_score"],
-            "volume_growth": row["volume_growth"],
-            "price_growth": row["price_growth"],
-            "lifecycle_stage": row["lifecycle_stage"],
-            "computed_at": row["computed_at"],
-            "source": row["source"] or "seed",
+            "keyword": t["keyword"],
+            "composite_score": t["composite_score"],
+            "volume_growth": t["volume_growth"],
+            "price_growth": t["price_growth"],
+            "lifecycle_stage": t["lifecycle_stage"],
+            "computed_at": t["computed_at"],
+            "source": t["source"] or "seed",
+            "scale": t["scale"],
         }
-        for i, row in enumerate(rows)
+        for i, t in enumerate(combined[:limit])
     ]
 
 

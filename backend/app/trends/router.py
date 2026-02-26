@@ -1,13 +1,18 @@
+import logging
 import threading
 import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+from fastapi.responses import JSONResponse
 
 from app.auth.service import get_current_user
 from app.database import get_connection
 from app.trends.service import get_top_trends, get_keyword_details, compute_composite_score
 from app.scheduler.jobs import scrape_single_keyword
+from app.scrapers.discovery import classify_keyword_scale
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/trends", tags=["trends"])
 
@@ -57,29 +62,63 @@ def _has_fresh_data(keyword: str) -> bool:
     return True
 
 
+def _merge_keyword_data(source: str, target: str, conn):
+    """Re-label all data rows from source keyword to target, then deactivate source."""
+    # trend_data and trend_scores have no unique constraints — safe to re-label directly
+    conn.execute("UPDATE trend_data SET keyword = ? WHERE keyword = ?", (target, source))
+    conn.execute("UPDATE trend_scores SET keyword = ? WHERE keyword = ?", (target, source))
+
+    # trend_images has UNIQUE(keyword, image_url) — drop conflicting source rows first
+    conn.execute(
+        """DELETE FROM trend_images WHERE keyword = ? AND image_url IN (
+               SELECT image_url FROM trend_images WHERE keyword = ?
+           )""",
+        (source, target),
+    )
+    conn.execute("UPDATE trend_images SET keyword = ? WHERE keyword = ?", (target, source))
+
+    # Deactivate the duplicate keyword
+    conn.execute("UPDATE keywords SET status = 'inactive' WHERE keyword = ?", (source,))
+    logger.info(f"Merged keyword '{source}' into '{target}'")
+
+
 def _ensure_keyword_tracked(keyword: str):
-    """Add keyword to keywords table if not already present. Updates last_searched_at on each search."""
+    """Add keyword to keywords table if not already present. Updates last_searched_at on each search.
+    Always tracks the keyword exactly as searched — no similarity redirects for user searches."""
     conn = get_connection()
     now = datetime.now(timezone.utc).isoformat()
 
     existing = conn.execute(
-        "SELECT keyword, status FROM keywords WHERE keyword = ?", (keyword,)
+        "SELECT keyword, status, scale FROM keywords WHERE keyword = ?", (keyword,)
     ).fetchone()
 
     if existing:
-        # Reactivate if previously deactivated, and update last searched time
         conn.execute(
             "UPDATE keywords SET last_searched_at = ?, status = CASE WHEN status = 'inactive' THEN 'active' ELSE status END WHERE keyword = ?",
             (now, keyword),
         )
+        needs_classification = existing["scale"] is None
     else:
         conn.execute(
             "INSERT INTO keywords (keyword, source, status, last_searched_at) VALUES (?, 'user_search', 'active', ?)",
             (keyword, now),
         )
+        needs_classification = True
 
     conn.commit()
     conn.close()
+
+    if needs_classification:
+        def _classify():
+            scale = classify_keyword_scale(keyword)
+            c = get_connection()
+            c.execute("UPDATE keywords SET scale = ? WHERE keyword = ?", (scale, keyword))
+            c.commit()
+            c.close()
+            logger.info(f"Scale: '{keyword}' → {scale}")
+        threading.Thread(target=_classify, daemon=True).start()
+
+    return keyword
 
 
 @router.get("/top")
@@ -92,11 +131,56 @@ def top_trends(period: int = 7, user: str = Depends(get_current_user)):
     }
 
 
+@router.get("/similar")
+def check_similar(keyword: str, user: str = Depends(get_current_user)):
+    """Check if a keyword is similar to an already-tracked keyword using word-overlap matching.
+    Returns { similar: <keyword> } or { similar: null }. Does not modify the DB.
+    No Claude call — uses deterministic word-set containment:
+      'corporate goth' words {'corporate','goth'} ⊇ tracked 'goth' words {'goth'} → suggest
+      'punk' words {'punk'} shares nothing with 'goth' words {'goth'} → no suggestion
+      'goth' words {'goth'} shares nothing with 'dark academia' words {'dark','academia'} → no suggestion
+    """
+    kw = _normalize(keyword)
+    conn = get_connection()
+
+    # If already actively tracked, no suggestion needed
+    existing = conn.execute(
+        "SELECT keyword FROM keywords WHERE keyword = ? AND status != 'inactive'", (kw,)
+    ).fetchone()
+    if existing:
+        conn.close()
+        return {"similar": None}
+
+    rows = conn.execute(
+        "SELECT keyword FROM keywords WHERE status != 'inactive'"
+    ).fetchall()
+    tracked = [r[0] for r in rows if r[0] != kw]
+    conn.close()
+
+    kw_words = set(kw.split())
+
+    # A tracked keyword is a candidate only when all its words appear in the search term
+    # OR all search term words appear in the tracked keyword.
+    # This catches "corporate goth" → "goth" and "y2k fashion" → "y2k"
+    # but NOT "punk" → "goth" or "goth" → "dark academia".
+    candidates = [
+        k for k in tracked
+        if set(k.split()).issubset(kw_words) or kw_words.issubset(set(k.split()))
+    ]
+
+    if not candidates:
+        return {"similar": None}
+
+    # Among candidates pick the most specific (most words = most specific match)
+    best = max(candidates, key=lambda k: len(k.split()))
+    return {"similar": best}
+
+
 @router.get("/search")
 def search_trend(keyword: str, period: int = 7, background_tasks: BackgroundTasks = None, user: str = Depends(get_current_user)):
     """Search a custom keyword. Triggers on-demand scrape if no fresh data."""
     keyword = _normalize(keyword)
-    _ensure_keyword_tracked(keyword)
+    keyword = _ensure_keyword_tracked(keyword)
 
     if not _has_fresh_data(keyword):
         thread = threading.Thread(target=scrape_single_keyword, args=(keyword,))
@@ -112,6 +196,73 @@ def search_trend(keyword: str, period: int = 7, background_tasks: BackgroundTask
         "score": score,
         "details": details,
     }
+
+
+# Refresh Pinterest images in the background after this many hours
+PINTEREST_IMAGE_STALE_HOURS = 24
+
+
+def _pinterest_images_stale(keyword: str) -> bool:
+    """Return True if Pinterest images for this keyword are older than PINTEREST_IMAGE_STALE_HOURS."""
+    threshold = (datetime.now(timezone.utc) - timedelta(hours=PINTEREST_IMAGE_STALE_HOURS)).isoformat()
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT scraped_at FROM trend_images WHERE keyword = ? AND source = 'pinterest' "
+        "ORDER BY scraped_at DESC LIMIT 1",
+        (keyword,),
+    ).fetchone()
+    conn.close()
+    if not row:
+        return True
+    return row["scraped_at"] < threshold
+
+
+@router.get("/{keyword}/images")
+def trend_images(keyword: str, user: str = Depends(get_current_user)):
+    """Return up to 4 product images. Primary: Pinterest. Fallback: eBay.
+    Returns cached images immediately; triggers a background refresh if cache is stale."""
+    keyword = _normalize(keyword)
+
+    def _query_db():
+        from app.scrapers.pinterest import _is_article_pin
+        conn = get_connection()
+        rows = conn.execute(
+            "SELECT image_url, source, title, price, item_url FROM trend_images "
+            "WHERE keyword = ? ORDER BY scraped_at DESC LIMIT 20",
+            (keyword,),
+        ).fetchall()
+        conn.close()
+        pinterest_imgs, ebay_imgs = [], []
+        for r in rows:
+            d = dict(r)
+            if d["source"] == "pinterest":
+                if not _is_article_pin(d.get("title") or ""):
+                    pinterest_imgs.append(d)
+            else:
+                ebay_imgs.append(d)
+        # Pinterest first, fill remaining slots with eBay
+        combined = pinterest_imgs[:4]
+        combined += ebay_imgs[:4 - len(combined)]
+        return combined
+
+    images = _query_db()
+    pinterest_count = sum(1 for img in images if img["source"] == "pinterest")
+
+    if pinterest_count < 4:
+        # No cached images yet — block and wait so the first load has content
+        from app.scrapers.pinterest import scrape_pinterest_images
+        t = threading.Thread(target=scrape_pinterest_images, args=(keyword,))
+        t.start()
+        t.join(timeout=20)
+        images = _query_db()
+    elif _pinterest_images_stale(keyword):
+        # Cached images exist but are old — refresh in background, return stale images now
+        from app.scrapers.pinterest import scrape_pinterest_images
+        threading.Thread(target=scrape_pinterest_images, args=(keyword,), daemon=True).start()
+
+    response = JSONResponse({"keyword": keyword, "images": images})
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    return response
 
 
 @router.get("/{keyword}/details")
@@ -154,7 +305,7 @@ def list_keywords(user: str = Depends(get_current_user)):
     """List all tracked keywords and their status."""
     conn = get_connection()
     rows = conn.execute(
-        "SELECT keyword, source, status, added_at, last_searched_at FROM keywords WHERE status != 'inactive' ORDER BY added_at DESC"
+        "SELECT keyword, source, status, scale, added_at, last_searched_at FROM keywords WHERE status != 'inactive' ORDER BY added_at DESC"
     ).fetchall()
     conn.close()
     return {"keywords": [dict(r) for r in rows]}

@@ -1,0 +1,47 @@
+.trend-cycle {
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.trend-cycle__title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #aaa;
+  margin: 0 0 0.5rem 0;
+}
+
+.trend-cycle__svg {
+  display: block;
+  width: 100%;
+}
+
+/* HTML label row — positioned to match the SVG x% values */
+.trend-cycle__labels {
+  position: relative;
+  height: 1.25rem;
+  margin-top: 0.3rem;
+}
+
+.trend-cycle__label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: #bbb;
+  white-space: nowrap;
+}
+
+.trend-cycle__label--active {
+  color: #111111;
+  font-weight: 700;
+}
+
+@keyframes pulse-ring {
+  0%   { opacity: 0.45; }
+  100% { r: 18; opacity: 0; }
+}
+
+.trend-cycle__pulse {
+  animation: pulse-ring 2s ease-out infinite;
+}

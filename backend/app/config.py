@@ -21,6 +21,11 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
 
+    pexels_api_key: str = os.getenv("PEXELS_API_KEY", "")
+
+    google_cse_api_key: str = os.getenv("GOOGLE_CSE_API_KEY", "")
+    google_cse_cx: str = os.getenv("GOOGLE_CSE_CX", "")
+
     class Config:
         env_file = ".env"
 

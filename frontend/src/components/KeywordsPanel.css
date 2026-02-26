@@ -22,7 +22,7 @@
 }
 
 .kw-count--seed { color: #16a34a; font-weight: 600; }
-.kw-count--user { color: #2563eb; font-weight: 600; }
+.kw-count--user { color: #4a85a0; font-weight: 600; }
 
 .keywords-panel__toolbar {
   display: flex;
@@ -43,7 +43,7 @@
 }
 
 .keywords-panel__search:focus {
-  border-color: #1a1a2e;
+  border-color: #111111;
 }
 
 .keywords-panel__add-form {
@@ -64,12 +64,12 @@
 }
 
 .keywords-panel__add-input:focus {
-  border-color: #1a1a2e;
+  border-color: #111111;
 }
 
 .keywords-panel__add-btn {
   padding: 0.55rem 1.1rem;
-  background: #1a1a2e;
+  background: #111111;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -81,7 +81,7 @@
 }
 
 .keywords-panel__add-btn:hover:not(:disabled) {
-  background: #2d2d4e;
+  background: #2a2a2a;
 }
 
 .keywords-panel__add-btn:disabled {
@@ -148,7 +148,7 @@
 .keywords-table__keyword {
   font-weight: 600;
   text-transform: capitalize;
-  color: #1a1a2e;
+  color: #111111;
 }
 
 .keywords-table__muted {
@@ -177,9 +177,9 @@
 }
 
 .kw-source-badge--user {
-  background: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #bfdbfe;
+  background: #e0eef5;
+  color: #4a85a0;
+  border: 1px solid #b8d4e5;
 }
 
 /* Actions */
@@ -210,13 +210,13 @@
 }
 
 .kw-view-btn:hover {
-  border-color: #1a1a2e;
-  color: #1a1a2e;
+  border-color: #111111;
+  color: #111111;
 }
 
 .kw-view-btn--active {
-  border-color: #1a1a2e;
-  color: #1a1a2e;
+  border-color: #111111;
+  color: #111111;
 }
 
 .kw-compare-btn {
@@ -233,13 +233,13 @@
 }
 
 .kw-compare-btn:hover {
-  border-color: #1a1a2e;
-  color: #1a1a2e;
+  border-color: #111111;
+  color: #111111;
 }
 
 .kw-compare-btn--active {
-  background: #1a1a2e;
-  border-color: #1a1a2e;
+  background: #111111;
+  border-color: #111111;
   color: #fff;
 }
 
@@ -283,4 +283,19 @@
   color: #bbb;
   margin: 1.25rem 0 0;
   text-align: center;
+}
+
+.kw-micro-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #4a85a0;
+  background: #e0eef5;
+  border: 1px solid #b8d4e5;
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  vertical-align: middle;
 }

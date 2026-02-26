@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 import TrendCard from './TrendCard'
@@ -17,8 +17,32 @@ export default function Dashboard() {
   const [expandedKeyword, setExpandedKeyword] = useState(null)
   const [searchResult, setSearchResult] = useState(null)
   const [searchLoading, setSearchLoading] = useState(false)
+  const [similarSuggestion, setSimilarSuggestion] = useState(null) // { original, similar }
   const [view, setView] = useState('top') // 'top', 'search', or 'compare'
   const [compareKeywords, setCompareKeywords] = useState([])
+  const [trackedKeywords, setTrackedKeywords] = useState([])
+  const [scrapeStep, setScrapeStep] = useState(0)
+  const scrapeTimerRef = useRef(null)
+
+  const SCRAPE_STEPS = [
+    'Checking Google Trends data...',
+    'Scraping eBay listings...',
+    'Fetching Pinterest images...',
+    'Analyzing price history...',
+    'Computing trend score...',
+  ]
+
+  useEffect(() => {
+    if (searchLoading) {
+      setScrapeStep(0)
+      scrapeTimerRef.current = setInterval(() => {
+        setScrapeStep(s => (s + 1) % SCRAPE_STEPS.length)
+      }, 1800)
+    } else {
+      clearInterval(scrapeTimerRef.current)
+    }
+    return () => clearInterval(scrapeTimerRef.current)
+  }, [searchLoading])
 
   useEffect(() => {
     fetchTopTrends()
@@ -38,14 +62,34 @@ export default function Dashboard() {
 
   const handleSearch = async (e) => {
     e.preventDefault()
-    if (!searchQuery.trim()) return
+    const kw = searchQuery.trim().toLowerCase()
+    if (!kw) return
     setSearchLoading(true)
     setView('search')
     setExpandedKeyword(null)
+    setSimilarSuggestion(null)
+    setSearchResult(null)
 
     try {
+      const check = await api.get('/trends/similar', { params: { keyword: kw } })
+      if (check.data.similar) {
+        setSimilarSuggestion({ original: kw, similar: check.data.similar })
+        setSearchLoading(false)
+        return
+      }
+    } catch {
+      // similarity check failure is non-fatal — proceed with search
+    }
+
+    await doSearch(kw)
+  }
+
+  const doSearch = async (kw) => {
+    setSearchLoading(true)
+    setSimilarSuggestion(null)
+    try {
       const res = await api.get('/trends/search', {
-        params: { keyword: searchQuery.trim(), period },
+        params: { keyword: kw, period },
       })
       setSearchResult(res.data)
     } catch {
@@ -59,6 +103,7 @@ export default function Dashboard() {
     setView('top')
     setSearchResult(null)
     setSearchQuery('')
+    setSimilarSuggestion(null)
     setExpandedKeyword(null)
   }
 
@@ -103,11 +148,15 @@ export default function Dashboard() {
     }
   }
 
-  // Sync compareKeywords from backend on mount
+  // Sync compareKeywords and all tracked keywords from backend on mount
   useEffect(() => {
     api.get('/compare').then(res => {
       const kws = (res.data.keywords || []).map(k => typeof k === 'object' ? k.keyword : k)
       setCompareKeywords(kws)
+    }).catch(() => {})
+
+    api.get('/trends/keywords/list').then(res => {
+      setTrackedKeywords((res.data.keywords || []).map(k => k.keyword))
     }).catch(() => {})
   }, [])
 
@@ -181,13 +230,53 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {searchLoading && <p className="status-message">Scraping data for "{searchQuery}"... This may take a moment.</p>}
+            {searchLoading && (
+              <div className="scrape-loader">
+                <div className="scrape-loader__bar">
+                  <div className="scrape-loader__fill" />
+                </div>
+                <div className="scrape-loader__steps">
+                  {SCRAPE_STEPS.map((step, i) => (
+                    <span
+                      key={step}
+                      className={`scrape-loader__step ${i === scrapeStep ? 'scrape-loader__step--active' : ''} ${i < scrapeStep ? 'scrape-loader__step--done' : ''}`}
+                    >
+                      {i < scrapeStep ? '✓' : i === scrapeStep ? '›' : '·'} {step}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!searchLoading && similarSuggestion && (
+              <div className="search-suggestion">
+                <p className="search-suggestion__text">
+                  We're already tracking <strong>"{similarSuggestion.similar}"</strong>, which may be related to "{similarSuggestion.original}".
+                  What would you like to do?
+                </p>
+                <div className="search-suggestion__actions">
+                  <button
+                    className="search-suggestion__btn search-suggestion__btn--primary"
+                    onClick={() => doSearch(similarSuggestion.similar)}
+                  >
+                    View "{similarSuggestion.similar}" data
+                  </button>
+                  <span className="search-suggestion__or">or</span>
+                  <button
+                    className="search-suggestion__btn search-suggestion__btn--secondary"
+                    onClick={() => doSearch(similarSuggestion.original)}
+                  >
+                    Track "{similarSuggestion.original}" separately
+                  </button>
+                </div>
+              </div>
+            )}
 
             {!searchLoading && searchResult && (
               <TrendDetail keyword={searchResult.keyword} period={period} />
             )}
 
-            {!searchLoading && !searchResult && (
+            {!searchLoading && !searchResult && !similarSuggestion && (
               <p className="status-message">No results found. Try a different keyword.</p>
             )}
           </div>
@@ -245,7 +334,8 @@ export default function Dashboard() {
         view,
         keyword: searchResult?.keyword || (expandedKeyword) || null,
         trendData: searchResult || null,
-        topTrends: view === 'top' ? trends : [],
+        topTrends: trends,
+        trackedKeywords,
         compareKeywords,
       }} />
     </div>

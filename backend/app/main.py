@@ -8,7 +8,7 @@ from app.auth.router import router as auth_router
 from app.trends.router import router as trends_router
 from app.compare.router import router as compare_router
 from app.chat.router import router as chat_router
-from app.scrapers.discovery import load_seed_keywords
+from app.scrapers.discovery import load_seed_keywords, backfill_scale_classifications
 from app.scheduler.jobs import start_scheduler, stop_scheduler
 
 logging.basicConfig(
@@ -34,9 +34,11 @@ app.include_router(chat_router)
 
 @app.on_event("startup")
 def startup():
+    import threading
     init_db()
     load_seed_keywords()
     start_scheduler()
+    threading.Thread(target=backfill_scale_classifications, daemon=True).start()
 
 
 @app.on_event("shutdown")

@@ -44,6 +44,12 @@ def init_db():
     except Exception:
         pass  # Column already exists
 
+    # Migrate: add scale (macro/micro) if it doesn't exist yet
+    try:
+        cursor.execute("ALTER TABLE keywords ADD COLUMN scale TEXT")
+    except Exception:
+        pass  # Column already exists
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS trend_scores (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,11 +85,26 @@ def init_db():
 
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON chat_messages(user_email)")
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS trend_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            keyword TEXT NOT NULL,
+            source TEXT NOT NULL,
+            image_url TEXT NOT NULL,
+            title TEXT,
+            price REAL,
+            item_url TEXT,
+            scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(keyword, image_url)
+        )
+    """)
+
     # Create indexes for common queries
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_trend_data_keyword ON trend_data(keyword)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_trend_data_recorded_at ON trend_data(recorded_at)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_trend_scores_keyword ON trend_scores(keyword)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_keywords_status ON keywords(status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_trend_images_keyword ON trend_images(keyword)")
 
     conn.commit()
     conn.close()

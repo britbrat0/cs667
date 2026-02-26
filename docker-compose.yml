@@ -22,6 +22,9 @@ services:
       - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:-}
       - ETSY_API_KEY=${ETSY_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - PEXELS_API_KEY=${PEXELS_API_KEY:-}
+      - GOOGLE_CSE_API_KEY=${GOOGLE_CSE_API_KEY:-}
+      - GOOGLE_CSE_CX=${GOOGLE_CSE_CX:-}
 
 volumes:
   backend-data:

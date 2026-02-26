@@ -12,7 +12,7 @@ export default function VolatilityDisplay({ value }) {
     value < 5 ? 'Low' : value < 15 ? 'Moderate' : value < 30 ? 'High' : 'Very High'
 
   const color =
-    value < 5 ? '#27ae60' : value < 15 ? '#f39c12' : value < 30 ? '#e67e22' : '#e74c3c'
+    value < 5 ? '#8a8a8a' : value < 15 ? '#e8a0aa' : value < 30 ? '#cc6677' : '#cc3333'
 
   return (
     <div className="chart-container">

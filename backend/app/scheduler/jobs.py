@@ -11,7 +11,7 @@ from app.scrapers.reddit import scrape_reddit
 from app.scrapers.depop import scrape_depop
 from app.scrapers.etsy import scrape_etsy
 from app.scrapers.poshmark import scrape_poshmark
-from app.scrapers.discovery import get_active_keywords, run_discovery
+from app.scrapers.discovery import get_active_keywords, run_discovery, refine_scale_classifications
 from app.database import get_connection
 from app.trends.service import compute_and_store_scores
 
@@ -52,15 +52,60 @@ def compute_all_scores():
     logger.info("Score computation complete")
 
 
+def catchup_google_trends():
+    """Re-scrape Google Trends for any active keyword that has no search_volume data
+    from the last 24 hours. Runs after the main scrape to recover from rate-limit failures."""
+    threshold = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    conn = get_connection()
+    rows = conn.execute(
+        """
+        SELECT k.keyword FROM keywords k
+        WHERE k.status = 'active'
+          AND NOT EXISTS (
+              SELECT 1 FROM trend_data t
+              WHERE t.keyword = k.keyword
+                AND t.source = 'google_trends'
+                AND t.metric = 'search_volume'
+                AND t.recorded_at >= ?
+          )
+        """,
+        (threshold,),
+    ).fetchall()
+    conn.close()
+
+    missing = [r["keyword"] for r in rows]
+    if not missing:
+        logger.info("Catch-up: all keywords have recent Google Trends data")
+        return
+
+    logger.info(f"Catch-up: re-scraping Google Trends for {len(missing)} keyword(s): {missing}")
+    for keyword in missing:
+        success = scrape_google_trends(keyword)
+        if success:
+            try:
+                compute_and_store_scores(keyword)
+            except Exception as e:
+                logger.error(f"Catch-up: failed to compute scores for '{keyword}': {e}")
+        time.sleep(random.uniform(10, 20))  # extra breathing room between catch-up requests
+
+    logger.info("Catch-up complete")
+
+
 def scrape_and_score():
-    """Combined job: scrape all sources, then compute scores."""
+    """Combined job: scrape all sources, then compute scores, then catch up any missing data."""
     scrape_all_sources()
     compute_all_scores()
+    catchup_google_trends()
 
 
 def discover_keywords():
     """Run keyword auto-discovery."""
     run_discovery()
+
+
+def refine_keyword_scales():
+    """Data-driven weekly review of macro/micro classifications."""
+    refine_scale_classifications()
 
 
 def expire_stale_keywords():
@@ -102,8 +147,11 @@ def start_scheduler():
     # Expire stale user-searched keywords daily
     scheduler.add_job(expire_stale_keywords, "interval", hours=24, id="expire_stale_keywords", replace_existing=True)
 
+    # Refine macro/micro classifications weekly using statistical signals
+    scheduler.add_job(refine_keyword_scales, "interval", days=7, id="refine_keyword_scales", replace_existing=True)
+
     scheduler.start()
-    logger.info("Scheduler started: scrape_and_score every 6h, discover_keywords every 24h, expire_stale_keywords every 24h")
+    logger.info("Scheduler started: scrape_and_score every 6h, discover_keywords every 24h, expire_stale_keywords every 24h, refine_keyword_scales every 7d")
 
 
 def stop_scheduler():

@@ -6,6 +6,8 @@ import SalesVolumeChart from './Charts/SalesVolumeChart'
 import VolatilityDisplay from './Charts/VolatilityDisplay'
 import RegionHeatmap from './RegionHeatmap'
 import LifecycleBadge from './LifecycleBadge'
+import TrendMoodboard from './TrendMoodboard'
+import TrendCycleIndicator from './TrendCycleIndicator'
 import './TrendDetail.css'
 
 const HORIZON_OPTIONS = [
@@ -91,6 +93,10 @@ export default function TrendDetail({ keyword, period }) {
         </div>
       )}
 
+      <TrendMoodboard keyword={keyword} />
+
+      <TrendCycleIndicator stage={details.score?.lifecycle_stage} />
+
       <div className="trend-detail__charts">
         {/* Search volume chart with forecast controls */}
         <div className="forecast-chart-wrapper">
@@ -142,10 +148,7 @@ export default function TrendDetail({ keyword, period }) {
         <VolatilityDisplay value={details.price_volatility} />
       </div>
 
-      <RegionHeatmap
-        usRegions={details.regions_us}
-        globalRegions={details.regions_global}
-      />
+      <RegionHeatmap usRegions={details.regions_us} />
     </div>
   )
 }

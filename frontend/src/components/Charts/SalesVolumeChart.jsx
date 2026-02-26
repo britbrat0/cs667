@@ -30,7 +30,7 @@ export default function SalesVolumeChart({ data }) {
           <XAxis dataKey="date" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip />
-          <Bar dataKey="sold" fill="#16213e" radius={[4, 4, 0, 0]}>
+          <Bar dataKey="sold" fill="#111111" radius={[4, 4, 0, 0]}>
             {sparse && <LabelList dataKey="sold" position="top" style={{ fontSize: 11, fill: '#555' }} />}
           </Bar>
         </BarChart>

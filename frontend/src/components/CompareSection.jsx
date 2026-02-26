@@ -4,7 +4,7 @@ import CompareChart from './Charts/CompareChart'
 import LifecycleBadge from './LifecycleBadge'
 import './CompareSection.css'
 
-const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#0891b2', '#b45309', '#0f766e']
+const COLORS = ['#cc3333', '#7c3aed', '#db2777', '#0891b2', '#b45309', '#0f766e']
 const MAX_COMPARE = 6
 
 export default function CompareSection({ compareKeywords, onKeywordsChange, period = 30 }) {

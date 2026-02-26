@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
+  background: linear-gradient(135deg, #0a0a0a 0%, #111111 50%, #1a1a1a 100%);
   padding: 1rem;
 }
 
@@ -20,7 +20,7 @@
   font-size: 1.6rem;
   font-weight: 700;
   text-align: center;
-  color: #1a1a2e;
+  color: #111111;
   margin-bottom: 0.25rem;
 }
 
@@ -59,8 +59,8 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #1a1a2e;
-  box-shadow: 0 0 0 3px rgba(26, 26, 46, 0.1);
+  border-color: #111111;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.1);
 }
 
 .error-message {
@@ -73,7 +73,7 @@
 
 .submit-btn {
   padding: 0.85rem;
-  background: #1a1a2e;
+  background: #111111;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -84,7 +84,7 @@
 }
 
 .submit-btn:hover {
-  background: #16213e;
+  background: #1a1a1a;
 }
 
 .submit-btn:disabled {
@@ -98,14 +98,14 @@
   margin-top: 1.25rem;
   background: none;
   border: none;
-  color: #1a1a2e;
+  color: #111111;
   font-size: 0.85rem;
   cursor: pointer;
   text-decoration: underline;
 }
 
 .toggle-btn:hover {
-  color: #16213e;
+  color: #1a1a1a;
 }
 
 @media (max-width: 480px) {
