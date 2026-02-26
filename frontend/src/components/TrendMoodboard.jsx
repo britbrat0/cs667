@@ -11,7 +11,15 @@ export default function TrendMoodboard({ keyword }) {
     setLoading(true)
     api
       .get(`/trends/${encodeURIComponent(keyword)}/images`, { params: { _t: Date.now() } })
-      .then((res) => setImages(res.data.images || []))
+      .then((res) => {
+        const all = res.data.images || []
+        const seen = new Set()
+        setImages(all.filter(img => {
+          if (seen.has(img.image_url)) return false
+          seen.add(img.image_url)
+          return true
+        }))
+      })
       .catch(() => setImages([]))
       .finally(() => setLoading(false))
   }, [keyword])

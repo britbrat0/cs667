@@ -4,7 +4,6 @@ import {
   Area,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   LabelList,
   ResponsiveContainer,
@@ -30,19 +29,22 @@ export default function VolumeChart({ data, forecastData }) {
         <h4>Search Volume Over Time</h4>
         <ResponsiveContainer width="100%" height={250}>
           <ComposedChart data={formatted}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
+            <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#888' }} />
+            <YAxis tick={{ fontSize: 12, fill: '#888' }} />
+            <Tooltip
+              contentStyle={{ background: '#2a2a2a', border: '1px solid #3a3a3a', borderRadius: 8 }}
+              itemStyle={{ color: '#e0e0e0' }}
+              labelStyle={{ color: '#aaa' }}
+            />
             <Line
               type="monotone"
               dataKey="value"
-              stroke="#111111"
+              stroke="#f0a8b8"
               strokeWidth={2}
-              dot={sparse ? { r: 5, fill: '#111111' } : false}
+              dot={sparse ? { r: 5, fill: '#f0a8b8' } : false}
               activeDot={{ r: 4 }}
             >
-              {sparse && <LabelList dataKey="value" position="top" style={{ fontSize: 11, fill: '#555' }} />}
+              {sparse && <LabelList dataKey="value" position="top" style={{ fontSize: 11, fill: '#888' }} />}
             </Line>
           </ComposedChart>
         </ResponsiveContainer>
@@ -75,10 +77,12 @@ export default function VolumeChart({ data, forecastData }) {
       <h4>Search Volume Over Time</h4>
       <ResponsiveContainer width="100%" height={280}>
         <ComposedChart data={combined}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-          <XAxis dataKey="date" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-          <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
+          <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#888' }} interval="preserveStartEnd" />
+          <YAxis tick={{ fontSize: 12, fill: '#888' }} domain={[0, 100]} />
           <Tooltip
+            contentStyle={{ background: '#2a2a2a', border: '1px solid #3a3a3a', borderRadius: 8 }}
+            itemStyle={{ color: '#e0e0e0' }}
+            labelStyle={{ color: '#aaa' }}
             formatter={(val, name) => {
               if (name === 'value') return [val?.toFixed(1), 'Historical']
               if (name === 'forecast') return [val?.toFixed(1), 'Forecast']
@@ -102,7 +106,7 @@ export default function VolumeChart({ data, forecastData }) {
             type="monotone"
             dataKey="lower"
             stroke="none"
-            fill="#ffffff"
+            fill="#1e1e1e"
             fillOpacity={1}
             legendType="none"
             tooltipType="none"
@@ -113,7 +117,7 @@ export default function VolumeChart({ data, forecastData }) {
           <Line
             type="monotone"
             dataKey="value"
-            stroke="#111111"
+            stroke="#f0a8b8"
             strokeWidth={2}
             dot={false}
             activeDot={{ r: 4 }}

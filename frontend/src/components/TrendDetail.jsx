@@ -16,7 +16,7 @@ const HORIZON_OPTIONS = [
   { label: '30 days', value: 30 },
 ]
 
-export default function TrendDetail({ keyword, period }) {
+export default function TrendDetail({ keyword, period, inline = false }) {
   const [details, setDetails] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showForecast, setShowForecast] = useState(false)
@@ -62,7 +62,7 @@ export default function TrendDetail({ keyword, period }) {
   }
 
   return (
-    <div className="trend-detail">
+    <div className={`trend-detail${inline ? ' trend-detail--inline' : ''}`}>
       <div className="trend-detail__header">
         <h3>{keyword}</h3>
         {details.score?.lifecycle_stage && (

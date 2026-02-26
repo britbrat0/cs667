@@ -10,7 +10,7 @@
   border-radius: 10px;
   overflow: hidden;
   position: relative;
-  background: #f0f0f0;
+  background: #2a2a2a;
 }
 
 /* Padding-bottom trick: reliable square aspect ratio in all browsers incl. Safari */
@@ -68,12 +68,12 @@
 }
 
 .moodboard__badge--pexels {
-  background: rgba(255, 255, 255, 0.85);
-  color: #333;
+  background: rgba(0, 0, 0, 0.6);
+  color: #e0e0e0;
 }
 
 .moodboard__skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, #2a2a2a 25%, #333333 50%, #2a2a2a 75%);
   background-size: 200% 100%;
   animation: moodboard-shimmer 1.5s infinite;
 }

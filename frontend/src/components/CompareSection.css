@@ -1,7 +1,7 @@
 .compare-section {
-  background: #fff;
+  background: #222222;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  border: 1px solid #2e2e2e;
   padding: 1.5rem;
 }
 
@@ -16,15 +16,16 @@
   font-size: 1.2rem;
   font-weight: 700;
   margin: 0;
+  color: #f0f0f0;
 }
 
 .compare-clear-btn {
   background: none;
-  border: 1px solid #ddd;
+  border: 1px solid #333333;
   border-radius: 6px;
   padding: 0.3rem 0.75rem;
   font-size: 0.8rem;
-  color: #999;
+  color: #666;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
@@ -43,21 +44,25 @@
 .compare-input {
   flex: 1;
   padding: 0.6rem 0.9rem;
-  border: 1px solid #ddd;
+  border: 1px solid #333333;
   border-radius: 8px;
   font-size: 0.9rem;
+  background: #1e1e1e;
+  color: #e0e0e0;
   outline: none;
   transition: border-color 0.2s;
 }
 
+.compare-input::placeholder { color: #555555; }
+
 .compare-input:focus {
-  border-color: #111111;
+  border-color: #f0a8b8;
 }
 
 .compare-add-btn {
   padding: 0.6rem 1.1rem;
-  background: #111111;
-  color: #fff;
+  background: #333333;
+  color: #e0e0e0;
   border: none;
   border-radius: 8px;
   font-size: 0.9rem;
@@ -68,7 +73,7 @@
 }
 
 .compare-add-btn:hover:not(:disabled) {
-  background: #2a2a2a;
+  background: #3a3a3a;
 }
 
 .compare-add-btn:disabled {
@@ -83,7 +88,7 @@
 }
 
 .compare-status {
-  color: #999;
+  color: #666;
   font-size: 0.9rem;
   text-align: center;
   padding: 1rem 0;
@@ -92,7 +97,7 @@
 .compare-empty {
   text-align: center;
   padding: 2rem 0;
-  color: #888;
+  color: #666;
 }
 
 .compare-empty p {
@@ -120,8 +125,9 @@
   border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 500;
-  background: #fafafa;
+  background: #2a2a2a;
   text-transform: capitalize;
+  color: #e0e0e0;
 }
 
 .compare-chip__dot {
@@ -136,7 +142,7 @@
   border: none;
   cursor: pointer;
   font-size: 1rem;
-  color: #aaa;
+  color: #555;
   line-height: 1;
   padding: 0;
   margin-left: 0.1rem;
@@ -155,14 +161,14 @@
 .compare-chart-title {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #666;
+  color: #777777;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0 0 0.75rem;
 }
 
 .compare-no-data {
-  color: #aaa;
+  color: #555;
   font-size: 0.85rem;
   text-align: center;
   padding: 1.5rem 0;
@@ -176,7 +182,7 @@
 }
 
 .compare-score-card {
-  background: #fafafa;
+  background: #2a2a2a;
   border-radius: 8px;
   padding: 0.9rem;
   border-top: 3px solid;
@@ -189,7 +195,7 @@
   font-size: 0.82rem;
   font-weight: 600;
   text-transform: capitalize;
-  color: #333;
+  color: #cccccc;
   word-break: break-word;
 }
 
@@ -212,7 +218,7 @@
 
 .metric-label {
   font-size: 0.68rem;
-  color: #aaa;
+  color: #555;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -220,5 +226,5 @@
 .metric-value {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #444;
+  color: #cccccc;
 }

@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const COLORS = ['#cc3333', '#7c3aed', '#db2777', '#0891b2', '#b45309', '#0f766e']
 
@@ -24,14 +24,15 @@ export default function CompareChart({ series }) {
   return (
     <ResponsiveContainer width="100%" height={280}>
       <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-        <YAxis tick={{ fontSize: 11 }} />
+        <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#888' }} />
+        <YAxis tick={{ fontSize: 11, fill: '#888' }} />
         <Tooltip
-          contentStyle={{ fontSize: 12, borderRadius: 8 }}
+          contentStyle={{ background: '#2a2a2a', border: '1px solid #3a3a3a', borderRadius: 8, fontSize: 12 }}
+          itemStyle={{ color: '#e0e0e0' }}
+          labelStyle={{ color: '#aaa' }}
           formatter={(value, name) => [value, name]}
         />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
         {series.map(({ keyword }, i) => (
           <Line
             key={keyword}

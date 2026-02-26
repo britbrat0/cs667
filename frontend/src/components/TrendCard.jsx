@@ -3,7 +3,42 @@ import api from '../services/api'
 import LifecycleBadge from './LifecycleBadge'
 import './TrendCard.css'
 
-export default function TrendCard({ trend, isExpanded, onClick, onRemove, onCompare, inCompare }) {
+function ForecastColumns({ forecast }) {
+  if (!forecast) return null
+  const { current_rank, projected_rank, rank_delta, slope, stage_warning } = forecast
+
+  let deltaEl = null
+  if (rank_delta > 0) deltaEl = <span className="tc-delta tc-delta--up">▲{rank_delta}</span>
+  else if (rank_delta < 0) deltaEl = <span className="tc-delta tc-delta--down">▼{Math.abs(rank_delta)}</span>
+  else deltaEl = <span className="tc-delta tc-delta--flat">↔</span>
+
+  let momentumEl = null
+  if (slope > 2) momentumEl = <span className="tc-momentum tc-momentum--strong-up">⬆ surging</span>
+  else if (slope > 0.5) momentumEl = <span className="tc-momentum tc-momentum--up">↑ rising</span>
+  else if (slope < -2) momentumEl = <span className="tc-momentum tc-momentum--strong-down">⬇ fading</span>
+  else if (slope < -0.5) momentumEl = <span className="tc-momentum tc-momentum--down">↓ cooling</span>
+  else momentumEl = <span className="tc-momentum tc-momentum--flat">→ stable</span>
+
+  return (
+    <div className="trend-card__forecast" onClick={e => e.stopPropagation()}>
+      <span className="tc-forecast-label">7-day forecast</span>
+      <div className="tc-forecast-ranks">
+        <span className="tc-rank-now">#{current_rank}</span>
+        <span className="tc-rank-arrow">→</span>
+        <span className={`tc-rank-proj ${projected_rank < current_rank ? 'tc-rank-proj--up' : projected_rank > current_rank ? 'tc-rank-proj--down' : ''}`}>
+          #{projected_rank}
+        </span>
+        {deltaEl}
+      </div>
+      <div className="tc-forecast-badges">
+        {momentumEl}
+        {stage_warning && <span className="tc-stage-warn" title={stage_warning}>⚠</span>}
+      </div>
+    </div>
+  )
+}
+
+export default function TrendCard({ trend, isExpanded, onClick, onRemove, onCompare, inCompare, forecast }) {
   const [thumbs, setThumbs] = useState([])
 
   useEffect(() => {
@@ -33,8 +68,25 @@ export default function TrendCard({ trend, isExpanded, onClick, onRemove, onComp
     >
       <div className="trend-card__header">
         <span className="trend-card__rank">#{trend.rank}</span>
+
+        {thumbs.length > 0 && (
+          <div className="trend-card__thumb-wrap">
+            <img
+              src={thumbs[0].image_url}
+              alt={thumbs[0].title || trend.keyword}
+              className="trend-card__thumb"
+              loading="lazy"
+            />
+          </div>
+        )}
+
         <div className="trend-card__info">
-          <span className="trend-card__keyword">{trend.keyword}</span>
+          <div className="trend-card__keyword-row">
+            <span className="trend-card__keyword">{trend.keyword}</span>
+            <span className="trend-card__expand">
+              {isExpanded ? '\u25B2' : '\u25BC'}
+            </span>
+          </div>
           <div className="trend-card__meta">
             <span className="trend-card__score" style={{ color: scoreColor }}>
               {scorePrefix}{trend.composite_score?.toFixed(1)}
@@ -47,21 +99,16 @@ export default function TrendCard({ trend, isExpanded, onClick, onRemove, onComp
             )}
           </div>
         </div>
-        {thumbs.length > 0 && (
-          <div className="trend-card__thumbs">
-            {thumbs.map((img, i) => (
-              <img
-                key={i}
-                src={img.image_url}
-                alt={img.title || trend.keyword}
-                className="trend-card__thumb"
-                loading="lazy"
-              />
-            ))}
-          </div>
-        )}
+        <ForecastColumns forecast={forecast} />
 
         <div className="trend-card__actions">
+          <button
+            className={`trend-card__compare ${inCompare ? 'trend-card__compare--active' : ''}`}
+            onClick={handleCompare}
+            title={inCompare ? 'Remove from compare' : 'Add to compare'}
+          >
+            {inCompare ? '✓ Compare' : '+ Compare'}
+          </button>
           {isSeed ? (
             <span className="trend-card__lock" title="Seed keyword — protected">&#128274;</span>
           ) : (
@@ -73,16 +120,6 @@ export default function TrendCard({ trend, isExpanded, onClick, onRemove, onComp
               &#128465;
             </button>
           )}
-          <button
-            className={`trend-card__compare ${inCompare ? 'trend-card__compare--active' : ''}`}
-            onClick={handleCompare}
-            title={inCompare ? 'Remove from compare' : 'Add to compare'}
-          >
-            {inCompare ? '✓ Compare' : '+ Compare'}
-          </button>
-          <span className="trend-card__expand">
-            {isExpanded ? '\u25B2' : '\u25BC'}
-          </span>
         </div>
       </div>
 

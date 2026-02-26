@@ -34,7 +34,7 @@ def _scrape_google_trends_once(keyword: str) -> bool:
             conn = get_connection()
             for date, row in interest_df.iterrows():
                 conn.execute(
-                    "INSERT INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
+                    "INSERT OR IGNORE INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
                     (keyword, "google_trends", "search_volume", float(row[keyword]), date.isoformat()),
                 )
             conn.commit()
@@ -52,7 +52,7 @@ def _scrape_google_trends_once(keyword: str) -> bool:
                 for region, row in region_df.iterrows():
                     if row[keyword] > 0:
                         conn.execute(
-                            "INSERT INTO trend_data (keyword, source, metric, value, region, recorded_at) VALUES (?, ?, ?, ?, ?, ?)",
+                            "INSERT OR IGNORE INTO trend_data (keyword, source, metric, value, region, recorded_at) VALUES (?, ?, ?, ?, ?, ?)",
                             (keyword, "google_trends", "search_volume_region", float(row[keyword]), region, now),
                         )
                 conn.commit()
@@ -72,7 +72,7 @@ def _scrape_google_trends_once(keyword: str) -> bool:
                 for country, row in world_df.iterrows():
                     if row[keyword] > 0:
                         conn.execute(
-                            "INSERT INTO trend_data (keyword, source, metric, value, region, recorded_at) VALUES (?, ?, ?, ?, ?, ?)",
+                            "INSERT OR IGNORE INTO trend_data (keyword, source, metric, value, region, recorded_at) VALUES (?, ?, ?, ?, ?, ?)",
                             (keyword, "google_trends", "search_volume_region_global", float(row[keyword]), country, now),
                         )
                 conn.commit()

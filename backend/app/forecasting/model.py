@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
@@ -89,3 +89,34 @@ def forecast_search_volume(keyword: str, horizon_days: int = 14) -> dict:
         "fit_window_days": len(fit_data),
         "model": f"polynomial_deg{degree}",
     }
+
+
+def get_volume_slope(keyword: str, window_days: int = 14) -> tuple:
+    """Return (slope_per_day, current_avg_volume) from a linear fit on recent search volume.
+
+    slope_per_day: change in Google Trends index (0–100 scale) per day.
+    current_avg_volume: mean of the most recent 7 days in the window.
+    Returns (0.0, 0.0) if fewer than 3 data points exist.
+    """
+    conn = get_connection()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=window_days)).isoformat()
+    rows = conn.execute(
+        "SELECT AVG(value) as value, DATE(recorded_at) as date "
+        "FROM trend_data "
+        "WHERE keyword = ? AND source = 'google_trends' AND metric = 'search_volume' "
+        "AND recorded_at >= ? "
+        "GROUP BY DATE(recorded_at) ORDER BY date ASC",
+        (keyword, cutoff),
+    ).fetchall()
+    conn.close()
+
+    if len(rows) < 3:
+        return 0.0, 0.0
+
+    y = np.array([float(r["value"]) for r in rows])
+    x = np.arange(len(y), dtype=float)
+    coeffs = np.polyfit(x, y, 1)
+    slope = float(coeffs[0])
+    recent = y[-min(7, len(y)):]
+    current_avg = float(np.mean(recent))
+    return slope, current_avg

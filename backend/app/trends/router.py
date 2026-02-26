@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.auth.service import get_current_user
 from app.database import get_connection
-from app.trends.service import get_top_trends, get_keyword_details, compute_composite_score
+from app.trends.service import get_top_trends, get_keyword_details, compute_composite_score, predict_stage_warning
 from app.scheduler.jobs import scrape_single_keyword
 from app.scrapers.discovery import classify_keyword_scale
 
@@ -198,8 +198,116 @@ def search_trend(keyword: str, period: int = 7, background_tasks: BackgroundTask
     }
 
 
+@router.get("/ranking-forecast")
+def ranking_forecast(period: int = 7, user: str = Depends(get_current_user)):
+    """Project 7-day rank changes for all tracked trends.
+
+    Returns:
+      - top10: current top-10 trends with projected_rank, rank_delta, stage_warning
+      - challengers: up to 3 rising trends (ranked 11+) with positive volume slope
+      - horizon_days: forecast horizon used
+    """
+    from app.forecasting.model import get_volume_slope
+
+    HORIZON = 7
+
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT ts.keyword, ts.composite_score, ts.volume_growth, ts.price_growth, "
+        "ts.lifecycle_stage, COALESCE(k.scale, 'macro') as scale "
+        "FROM trend_scores ts LEFT JOIN keywords k ON ts.keyword = k.keyword "
+        "WHERE ts.period_days = ? AND (k.status IS NULL OR k.status != 'inactive')",
+        (period,),
+    ).fetchall()
+    conn.close()
+
+    all_kws = [dict(r) for r in rows]
+    if not all_kws:
+        return {"top10": [], "challengers": [], "horizon_days": HORIZON, "period_days": period}
+
+    # Compute volume slope and project scores forward HORIZON days
+    for kw in all_kws:
+        slope, current_vol = get_volume_slope(kw["keyword"])
+        kw["slope"] = slope
+        # Estimate how much volume_growth will shift over the horizon
+        if current_vol > 0:
+            delta_pct = (slope * HORIZON / current_vol) * 100.0
+        else:
+            delta_pct = 0.0
+        proj_vg = (kw["volume_growth"] or 0.0) + delta_pct
+        proj_composite = 0.6 * proj_vg + 0.4 * (kw["price_growth"] or 0.0)
+        kw["projected_volume_growth"] = round(proj_vg, 1)
+        kw["projected_composite"] = round(proj_composite, 1)
+        kw["stage_warning"] = predict_stage_warning(
+            kw["lifecycle_stage"] or "Peak",
+            kw["volume_growth"] or 0.0,
+            proj_vg,
+            slope,
+        )
+
+    # Helper: assign percentile within a scale group (mirrors get_top_trends logic)
+    def _rank_group(group, score_key):
+        group = sorted(group, key=lambda t: t[score_key] or 0, reverse=True)
+        n = len(group)
+        for i, t in enumerate(group):
+            t[f"_pct_{score_key}"] = (n - i) / n if n > 0 else 0.5
+        return group
+
+    # Current ranks
+    macro = [k for k in all_kws if k["scale"] == "macro"]
+    micro = [k for k in all_kws if k["scale"] == "micro"]
+    _rank_group(macro, "composite_score")
+    _rank_group(micro, "composite_score")
+    current_combined = sorted(
+        macro + micro, key=lambda t: t["_pct_composite_score"], reverse=True
+    )
+    for i, kw in enumerate(current_combined):
+        kw["current_rank"] = i + 1
+
+    # Projected ranks
+    _rank_group(macro, "projected_composite")
+    _rank_group(micro, "projected_composite")
+    projected_combined = sorted(
+        macro + micro, key=lambda t: t["_pct_projected_composite"], reverse=True
+    )
+    for i, kw in enumerate(projected_combined):
+        kw["projected_rank"] = i + 1
+
+    for kw in all_kws:
+        kw["rank_delta"] = kw["current_rank"] - kw["projected_rank"]  # positive = rising
+
+    # Top 10 by current rank
+    top10 = sorted(all_kws, key=lambda k: k["current_rank"])[:10]
+
+    # Challengers: currently ranked 11+ with positive slope
+    challengers = [k for k in all_kws if k["current_rank"] > 10 and k["slope"] > 0]
+    challengers.sort(key=lambda k: k["slope"], reverse=True)
+    challengers = challengers[:3]
+
+    def _fmt(kw):
+        return {
+            "keyword": kw["keyword"],
+            "current_rank": kw["current_rank"],
+            "projected_rank": kw["projected_rank"],
+            "rank_delta": kw["rank_delta"],
+            "composite_score": kw["composite_score"],
+            "projected_composite": kw["projected_composite"],
+            "lifecycle_stage": kw["lifecycle_stage"],
+            "stage_warning": kw["stage_warning"],
+            "slope": round(kw["slope"], 3),
+            "scale": kw["scale"],
+        }
+
+    return {
+        "top10": [_fmt(k) for k in top10],
+        "challengers": [_fmt(k) for k in challengers],
+        "horizon_days": HORIZON,
+        "period_days": period,
+    }
+
+
 # Refresh Pinterest images in the background after this many hours
-PINTEREST_IMAGE_STALE_HOURS = 24
+PINTEREST_IMAGE_STALE_HOURS = 6
 
 
 def _pinterest_images_stale(keyword: str) -> bool:
@@ -223,23 +331,51 @@ def trend_images(keyword: str, user: str = Depends(get_current_user)):
     Returns cached images immediately; triggers a background refresh if cache is stale."""
     keyword = _normalize(keyword)
 
+    def _dedup_phash(images, threshold=10):
+        try:
+            import imagehash
+        except ImportError:
+            return images
+        seen_hashes = []
+        result = []
+        for img in images:
+            ph_str = img.get("phash")
+            if ph_str:
+                try:
+                    ph = imagehash.hex_to_hash(ph_str)
+                    if any(abs(ph - s) <= threshold for s in seen_hashes):
+                        continue
+                    seen_hashes.append(ph)
+                except Exception:
+                    pass
+            result.append(img)
+        return result
+
     def _query_db():
         from app.scrapers.pinterest import _is_article_pin
         conn = get_connection()
         rows = conn.execute(
-            "SELECT image_url, source, title, price, item_url FROM trend_images "
+            "SELECT image_url, source, title, price, item_url, phash FROM trend_images "
             "WHERE keyword = ? ORDER BY scraped_at DESC LIMIT 20",
             (keyword,),
         ).fetchall()
         conn.close()
+        seen_urls = set()
         pinterest_imgs, ebay_imgs = [], []
         for r in rows:
             d = dict(r)
+            url = d.get("image_url")
+            if not url or url in seen_urls:
+                continue
+            seen_urls.add(url)
             if d["source"] == "pinterest":
                 if not _is_article_pin(d.get("title") or ""):
                     pinterest_imgs.append(d)
             else:
                 ebay_imgs.append(d)
+        # Deduplicate visually similar images using perceptual hash
+        pinterest_imgs = _dedup_phash(pinterest_imgs)
+        ebay_imgs = _dedup_phash(ebay_imgs)
         # Pinterest first, fill remaining slots with eBay
         combined = pinterest_imgs[:4]
         combined += ebay_imgs[:4 - len(combined)]

@@ -23,6 +23,8 @@ export default function Dashboard() {
   const [trackedKeywords, setTrackedKeywords] = useState([])
   const [scrapeStep, setScrapeStep] = useState(0)
   const scrapeTimerRef = useRef(null)
+  const [forecastMap, setForecastMap] = useState({})
+  const [challengers, setChallengers] = useState([])
 
   const SCRAPE_STEPS = [
     'Checking Google Trends data...',
@@ -46,6 +48,18 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchTopTrends()
+  }, [period])
+
+  useEffect(() => {
+    api.get('/trends/ranking-forecast', { params: { period } })
+      .then(res => {
+        const map = {}
+        ;(res.data.top10 || []).forEach(item => { map[item.keyword] = item })
+        ;(res.data.challengers || []).forEach(item => { map[item.keyword] = item })
+        setForecastMap(map)
+        setChallengers(res.data.challengers || [])
+      })
+      .catch(() => {})
   }, [period])
 
   const fetchTopTrends = async () => {
@@ -309,23 +323,60 @@ export default function Dashboard() {
             )}
 
             {!loading && trends.length > 0 && (
-              <div className="trends-list">
-                {trends.map((trend) => (
-                  <div key={trend.keyword} className="trend-list-item">
-                    <TrendCard
-                      trend={trend}
-                      isExpanded={expandedKeyword === trend.keyword}
-                      onClick={() => handleCardClick(trend.keyword)}
-                      onRemove={handleRemoveKeyword}
-                      onCompare={handleCompare}
-                      inCompare={compareKeywords.includes(trend.keyword.toLowerCase())}
-                    />
-                    {expandedKeyword === trend.keyword && (
-                      <TrendDetail keyword={trend.keyword} period={period} />
-                    )}
+              <>
+                <div className="trends-list">
+                  {trends.map((trend) => (
+                    <div key={trend.keyword} className="trend-list-item">
+                      <TrendCard
+                        trend={trend}
+                        isExpanded={expandedKeyword === trend.keyword}
+                        onClick={() => handleCardClick(trend.keyword)}
+                        onRemove={handleRemoveKeyword}
+                        onCompare={handleCompare}
+                        inCompare={compareKeywords.includes(trend.keyword.toLowerCase())}
+                        forecast={forecastMap[trend.keyword] || null}
+                      />
+                      {expandedKeyword === trend.keyword && (
+                        <TrendDetail keyword={trend.keyword} period={period} inline />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {challengers.length > 0 && (
+                  <div className="challengers-section">
+                    <h3 className="challengers-section__title">⬆ Rising Challengers</h3>
+                    <p className="challengers-section__subtitle">Trends ranked outside the top 10 with rising momentum</p>
+                    <div className="challengers-list">
+                      {challengers.map((c) => {
+                        let slopeEl
+                        if (c.slope > 2) slopeEl = <span className="challenger__badge challenger__badge--strong-up">⬆ surging</span>
+                        else if (c.slope > 0.5) slopeEl = <span className="challenger__badge challenger__badge--up">↑ rising</span>
+                        else slopeEl = <span className="challenger__badge challenger__badge--flat">→ stable</span>
+
+                        return (
+                          <div key={c.keyword} className="challenger-card">
+                            <span className="challenger__rank">#{c.current_rank}</span>
+                            <div className="challenger__info">
+                              <span className="challenger__keyword">{c.keyword}</span>
+                              <div className="challenger__meta">
+                                {slopeEl}
+                                {c.stage_warning && (
+                                  <span className="challenger__warn" title={c.stage_warning}>⚠ {c.stage_warning}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="challenger__proj">
+                              <span className="challenger__proj-label">projected</span>
+                              <span className="challenger__proj-rank">#{c.projected_rank}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </>
         )}

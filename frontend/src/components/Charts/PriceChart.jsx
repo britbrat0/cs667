@@ -4,7 +4,6 @@ import {
   Line,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   LabelList,
 } from 'recharts'
@@ -26,10 +25,14 @@ export default function PriceChart({ data }) {
       <h4>Avg Sold Price Over Time</h4>
       <ResponsiveContainer width="100%" height={250}>
         <LineChart data={formatted}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
-          <Tooltip formatter={(v) => [`$${v}`, 'Avg Price']} />
+          <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#888' }} />
+          <YAxis tick={{ fontSize: 12, fill: '#888' }} tickFormatter={(v) => `$${v}`} />
+          <Tooltip
+            formatter={(v) => [`$${v}`, 'Avg Price']}
+            contentStyle={{ background: '#2a2a2a', border: '1px solid #3a3a3a', borderRadius: 8 }}
+            itemStyle={{ color: '#e0e0e0' }}
+            labelStyle={{ color: '#aaa' }}
+          />
           <Line
             type="monotone"
             dataKey="price"
@@ -38,7 +41,7 @@ export default function PriceChart({ data }) {
             dot={sparse ? { r: 5, fill: '#e74c3c' } : false}
             activeDot={{ r: 4 }}
           >
-            {sparse && <LabelList dataKey="price" position="top" formatter={(v) => `$${v}`} style={{ fontSize: 11, fill: '#555' }} />}
+            {sparse && <LabelList dataKey="price" position="top" formatter={(v) => `$${v}`} style={{ fontSize: 11, fill: '#888' }} />}
           </Line>
         </LineChart>
       </ResponsiveContainer>

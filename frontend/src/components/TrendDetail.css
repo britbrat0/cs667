@@ -1,15 +1,21 @@
 .trend-detail {
-  background: #fff;
+  background: #222222;
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.trend-detail--inline {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .trend-detail__loading,
 .trend-detail__empty {
   text-align: center;
   padding: 2rem;
-  color: #737373;
+  color: #777777;
 }
 
 .trend-detail__header {
@@ -24,7 +30,7 @@
 .trend-detail__header h3 {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #111111;
+  color: #f0f0f0;
   text-transform: capitalize;
   margin: 0;
 }
@@ -41,14 +47,14 @@
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.75rem 1.25rem;
-  background: #f5f5f3;
+  background: #2a2a2a;
   border-radius: 8px;
   min-width: 120px;
 }
 
 .score-label {
   font-size: 0.7rem;
-  color: #737373;
+  color: #777777;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -56,7 +62,7 @@
 .score-value {
   font-size: 1.3rem;
   font-weight: 700;
-  color: #111111;
+  color: #f0f0f0;
 }
 
 .trend-detail__charts {
@@ -67,7 +73,7 @@
 }
 
 .chart-container {
-  background: #ffffff;
+  background: #1e1e1e;
   border-radius: 10px;
   padding: 1.25rem;
 }
@@ -75,12 +81,12 @@
 .chart-container h4 {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #333;
+  color: #cccccc;
   margin: 0 0 0.75rem 0;
 }
 
 .chart-empty {
-  color: #737373;
+  color: #777777;
   font-size: 0.85rem;
   text-align: center;
   padding: 2rem 0;
@@ -101,7 +107,7 @@
 
 .volatility-label {
   font-size: 0.75rem;
-  color: #737373;
+  color: #777777;
 }
 
 .volatility-level {
@@ -127,27 +133,28 @@
 }
 
 .forecast-toggle {
-  background: none;
-  border: 1px solid #e5e5e5;
+  background: rgba(240, 168, 184, 0.12);
+  border: 1px solid #f0a8b8;
   border-radius: 6px;
-  padding: 0.3rem 0.75rem;
+  padding: 0.35rem 0.9rem;
   font-size: 0.78rem;
-  font-weight: 600;
-  color: #737373;
+  font-weight: 700;
+  color: #f0a8b8;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
 }
 
 .forecast-toggle:hover {
-  border-color: #cc3333;
-  color: #cc3333;
+  background: rgba(240, 168, 184, 0.22);
+  color: #f8c8d4;
+  border-color: #f8c8d4;
 }
 
 .forecast-toggle--active {
-  background: #cc3333;
-  border-color: #cc3333;
-  color: #fff;
+  background: #f0a8b8;
+  border-color: #f0a8b8;
+  color: #111111;
 }
 
 .forecast-horizon-tabs {
@@ -157,12 +164,12 @@
 
 .forecast-horizon-tab {
   background: none;
-  border: 1px solid #e5e5e5;
+  border: 1px solid #3a3a3a;
   border-radius: 5px;
   padding: 0.25rem 0.6rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #aaa;
+  color: #666;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -173,14 +180,14 @@
 }
 
 .forecast-horizon-tab--active {
-  background: #fff0f0;
+  background: rgba(204, 51, 51, 0.15);
   border-color: #cc3333;
   color: #cc3333;
 }
 
 .forecast-status {
   font-size: 0.82rem;
-  color: #737373;
+  color: #777777;
   margin: 0;
 }
 
@@ -192,7 +199,7 @@
 
 .forecast-legend {
   font-size: 0.75rem;
-  color: #737373;
+  color: #777777;
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -204,7 +211,7 @@
   display: inline-block;
   width: 20px;
   height: 2px;
-  background: #111111;
+  background: #cccccc;
   vertical-align: middle;
 }
 

@@ -1,22 +1,84 @@
+import io
 import logging
 import re
 from datetime import datetime, timezone
 from urllib.parse import quote_plus
 
+import requests as _requests
+
 from app.database import get_connection
+
+
+def _analyze_image(url: str):
+    """Download an image and return (phash_str_or_None, is_text_heavy).
+
+    Text detection uses two signals (either triggers a rejection):
+      1. OCR (pytesseract): reads actual text regardless of color/background.
+         - >= 8 words found  →  flagged (large text block)
+         - >= 4 words AND title matches article patterns  →  flagged
+      2. Near-white pixel ratio fallback: catches white text-box cards when OCR
+         is unavailable.
+
+    Returns (None, False) on failure so images are never wrongly rejected.
+    """
+    try:
+        import imagehash
+        from PIL import Image
+        r = _requests.get(url, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
+        r.raise_for_status()
+        img = Image.open(io.BytesIO(r.content)).convert("RGB")
+        phash_str = str(imagehash.phash(img))
+
+        is_text_heavy = False
+
+        # Signal 1: OCR — works on any text color / background
+        try:
+            import pytesseract
+            # 300x300 is plenty for OCR and keeps latency low (~0.3s per image)
+            ocr_img = img.resize((300, 300))
+            ocr_text = pytesseract.image_to_string(
+                ocr_img, config="--psm 11 --oem 3"
+            )
+            words = [w for w in ocr_text.split() if len(w) > 2]
+            if len(words) >= 8:
+                # Large text block — definitely an article/guide image
+                is_text_heavy = True
+                logger.debug(f"OCR flagged image ({len(words)} words): {url[:60]}")
+            elif len(words) >= 4 and _is_article_pin(ocr_text):
+                # Fewer words but matches article-title pattern (e.g. "A Guide to Mastering")
+                is_text_heavy = True
+                logger.debug(f"OCR+pattern flagged image: {url[:60]}")
+        except Exception:
+            # pytesseract unavailable — fall through to pixel-ratio fallback
+            pass
+
+        # Signal 2: Near-white pixel ratio (fast, no OCR required)
+        # Catches white-box text cards regardless of OCR availability
+        if not is_text_heavy:
+            small = img.resize((64, 64))
+            pixels = list(small.getdata())
+            near_white = sum(1 for rv, g, b in pixels if rv > 235 and g > 235 and b > 235)
+            if (near_white / len(pixels)) > 0.18:
+                is_text_heavy = True
+
+        return phash_str, is_text_heavy
+    except Exception:
+        return None, False
 
 logger = logging.getLogger(__name__)
 
 # Patterns that indicate a Pinterest "idea pin" / blog post collage rather than a clean photo
 _ARTICLE_PATTERNS = re.compile(
-    r'^\d+\s'                           # starts with a number ("8 Luxury...", "10 Ways...")
+    r'\b\d+\s'                          # starts with a number ("8 Luxury...", "10 Ways...")
     r'|how\s+to\b'                      # "how to style"
     r'|\bways?\s+to\b'                  # "ways to wear"
+    r'|\bwhat\s+to\s+wear\b'            # "what to wear"
     r'|\btips?\b'                       # "tips for"
     r'|\bguide\b'                       # "ultimate guide"
     r'|\bmastering\b'                   # "mastering the art of"
     r'|\btutorial\b'                    # "tutorial"
     r'|\byou\s+need\b'                  # "everything you need"
+    r'|\bmust.?have\b'                  # "must-have" or "must have"
     r'|\bbrands?\b'                     # "best brands"
     r'|\.com\b'                         # contains a domain ("gooseberryintimates.com")
     r'|\binspo\s+board\b'               # "inspo board"
@@ -24,15 +86,21 @@ _ARTICLE_PATTERNS = re.compile(
     r'|\bessentials\b'                  # "wardrobe essentials"
     r'|\bwardrobe\b'                    # "build a wardrobe"
     r'|\bbuild\s+a\b'                   # "build a..."
-    r'|\boutfit\s+ideas\b'              # "outfit ideas"
     r'|\blook\s+book\b'                 # "look book"
     r'|\blookbook\b'                    # "lookbook"
     r'|\bcheat\s+sheet\b'               # "cheat sheet"
-    r'|\binspiration\s+board\b'          # "inspiration board"
-    r'|\baction\s+item\b'               # Pinterest UI artifact "Action Item Rep Preview Image"
+    r'|\binspiration\s+board\b'         # "inspiration board"
+    r'|\baction\s+item\b'               # Pinterest UI artifact
     r'|\bpreview\s+image\b'             # "Preview Image" UI artifacts
     r'|\bcheck\s+out\b'                 # "Check out these..."
-    r'|\baesthetic\s+refers\b',         # "aesthetic refers to..." (description text)
+    r'|\baesthetic\s+refers\b'          # "aesthetic refers to..." (description text)
+    r'|\bdress\s+like\b'                # "dress like a mob wife"
+    r'|\bstyle\s+guide\b'               # "style guide"
+    r'|\ba\s+guide\s+to\b'              # "a guide to..."
+    r'|\bshop\s+the\s+look\b'           # "shop the look"
+    r'|\bhere.?s\b'                     # "here's 5 ways..."
+    r'|\bunder\s+\$'                    # "under $50"
+    r'|\bwhere\s+to\s+(buy|find|shop)\b', # "where to buy"
     re.IGNORECASE,
 )
 
@@ -148,27 +216,49 @@ def scrape_pinterest_images(keyword: str) -> list:
         logger.error(f"Pinterest image scrape failed for '{keyword}': {e}")
         return []
 
-    if images:
-        now = datetime.now(timezone.utc).isoformat()
-        conn = get_connection()
-        for img in images:
-            conn.execute(
-                "INSERT OR IGNORE INTO trend_images "
-                "(keyword, source, image_url, title, price, item_url, scraped_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (img["keyword"], img["source"], img["image_url"],
-                 img["title"], img["price"], img["item_url"], now),
-            )
-        # Prune to 8 most recent per keyword
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_connection()
+
+    # Clean up any existing text-heavy images for this keyword (title-based)
+    existing = conn.execute(
+        "SELECT id, title FROM trend_images WHERE keyword = ? AND source = 'pinterest'",
+        (keyword,),
+    ).fetchall()
+    bad_ids = [r["id"] for r in existing if _is_article_pin(r["title"] or "")]
+    if bad_ids:
         conn.execute(
-            """DELETE FROM trend_images WHERE keyword = ? AND id NOT IN (
-                SELECT id FROM trend_images WHERE keyword = ?
-                ORDER BY scraped_at DESC LIMIT 8
-            )""",
-            (keyword, keyword),
+            f"DELETE FROM trend_images WHERE id IN ({','.join('?' * len(bad_ids))})",
+            bad_ids,
         )
         conn.commit()
-        conn.close()
-        logger.info(f"Pinterest: stored {len(images)} images for '{keyword}'")
+        logger.info(f"Pinterest: cleaned up {len(bad_ids)} text-heavy image(s) for '{keyword}'")
+
+    stored = 0
+    for img in images:
+        phash_val, is_text_heavy = _analyze_image(img["image_url"])
+        if is_text_heavy:
+            logger.info(f"Pinterest: skipping text-heavy image for '{keyword}'")
+            continue
+        conn.execute(
+            "INSERT OR IGNORE INTO trend_images "
+            "(keyword, source, image_url, title, price, item_url, scraped_at, phash) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (img["keyword"], img["source"], img["image_url"],
+             img["title"], img["price"], img["item_url"], now, phash_val),
+        )
+        stored += 1
+
+    # Prune to 8 most recent per keyword
+    conn.execute(
+        """DELETE FROM trend_images WHERE keyword = ? AND id NOT IN (
+            SELECT id FROM trend_images WHERE keyword = ?
+            ORDER BY scraped_at DESC LIMIT 8
+        )""",
+        (keyword, keyword),
+    )
+    conn.commit()
+    conn.close()
+    if stored:
+        logger.info(f"Pinterest: stored {stored} images for '{keyword}'")
 
     return images

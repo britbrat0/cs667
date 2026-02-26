@@ -54,8 +54,9 @@ def compute_all_scores():
 
 def catchup_google_trends():
     """Re-scrape Google Trends for any active keyword that has no search_volume data
-    from the last 24 hours. Runs after the main scrape to recover from rate-limit failures."""
-    threshold = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    from the last 10 days. Runs after the main scrape to recover from rate-limit failures.
+    Note: Google Trends returns weekly data, so the most recent point is up to 7 days old."""
+    threshold = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
     conn = get_connection()
     rows = conn.execute(
         """

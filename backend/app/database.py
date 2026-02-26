@@ -99,6 +99,21 @@ def init_db():
         )
     """)
 
+    # Migration: add phash column to trend_images for perceptual deduplication
+    try:
+        cursor.execute("ALTER TABLE trend_images ADD COLUMN phash TEXT")
+    except Exception:
+        pass  # column already exists
+
+    # Unique constraint to prevent duplicate trend_data rows (enables INSERT OR IGNORE)
+    try:
+        cursor.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_trend_data_unique
+            ON trend_data(keyword, source, metric, COALESCE(region, ''), recorded_at)
+        """)
+    except Exception:
+        pass  # index may already exist
+
     # Create indexes for common queries
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_trend_data_keyword ON trend_data(keyword)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_trend_data_recorded_at ON trend_data(recorded_at)")

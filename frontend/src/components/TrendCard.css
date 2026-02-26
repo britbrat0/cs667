@@ -1,18 +1,21 @@
 .trend-card {
-  background: #f0f0f0;
+  background: #222222;
   border-radius: 10px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   transition: box-shadow 0.2s, transform 0.1s;
   overflow: hidden;
 }
 
 .trend-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: #282828;
 }
 
 .trend-card--expanded {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .trend-card__header {
@@ -25,7 +28,7 @@
 .trend-card__rank {
   font-size: 1.2rem;
   font-weight: 700;
-  color: #111111;
+  color: #e0e0e0;
   min-width: 2.5rem;
 }
 
@@ -36,10 +39,17 @@
   gap: 0.35rem;
 }
 
+.trend-card__keyword-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .trend-card__keyword {
   font-weight: 600;
   font-size: 1rem;
   text-transform: capitalize;
+  color: #f0f0f0;
 }
 
 .trend-card__meta {
@@ -58,26 +68,28 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #4a85a0;
-  background: #e0eef5;
-  border: 1px solid #b8d4e5;
+  color: #7ab3cc;
+  background: rgba(74, 133, 160, 0.2);
+  border: 1px solid rgba(74, 133, 160, 0.35);
   border-radius: 4px;
   padding: 0.1rem 0.4rem;
 }
 
-.trend-card__thumbs {
-  display: flex;
-  gap: 0.35rem;
+.trend-card__thumb-wrap {
   flex-shrink: 0;
+  align-self: stretch;
+  /* Bleed past the header's 1rem top/bottom padding so image fills full card height */
+  margin: -1rem 0;
+  width: 72px;
+  overflow: hidden;
 }
 
 .trend-card__thumb {
-  width: 44px;
-  height: 44px;
+  width: 72px;
+  height: 100%;
   object-fit: cover;
-  border-radius: 6px;
   display: block;
-  background: #f0f0f0;
+  background: #333333;
 }
 
 .trend-card__actions {
@@ -87,7 +99,7 @@
 }
 
 .trend-card__expand {
-  color: #999;
+  color: #666;
   font-size: 0.7rem;
 }
 
@@ -123,7 +135,7 @@
 
 .trend-card__compare {
   background: none;
-  border: 1px solid #ccc;
+  border: 1px solid #3a3a3a;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.72rem;
@@ -140,15 +152,15 @@
 }
 
 .trend-card__compare:hover {
-  border-color: #111111;
-  color: #111111;
+  border-color: #e0e0e0;
+  color: #e0e0e0;
 }
 
 .trend-card__compare--active {
   opacity: 1 !important;
-  background: #111111;
-  border-color: #111111;
-  color: #fff;
+  background: #e0e0e0;
+  border-color: #e0e0e0;
+  color: #111111;
 }
 
 .trend-card__compare--active:hover {
@@ -157,9 +169,93 @@
   color: #fff;
 }
 
+/* Inline forecast columns */
+.trend-card__forecast {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  padding: 0 0.75rem;
+  border-left: 1px solid #333333;
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.tc-forecast-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #999999;
+  white-space: nowrap;
+}
+
+.tc-forecast-ranks {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+}
+
+.tc-rank-now {
+  color: #666;
+  font-weight: 600;
+}
+
+.tc-rank-arrow {
+  color: #444;
+  font-size: 0.7rem;
+}
+
+.tc-rank-proj {
+  font-weight: 700;
+  color: #888;
+}
+
+.tc-rank-proj--up   { color: #4caf50; }
+.tc-rank-proj--down { color: #cc3333; }
+
+.tc-delta {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  margin-left: 0.15rem;
+}
+
+.tc-delta--up   { color: #4caf50; background: rgba(76, 175, 80, 0.12); }
+.tc-delta--down { color: #cc3333; background: rgba(204, 51, 51, 0.12); }
+.tc-delta--flat { color: #555;    background: rgba(255, 255, 255, 0.05); }
+
+.tc-forecast-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.tc-momentum {
+  font-size: 0.67rem;
+  font-weight: 600;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.tc-momentum--strong-up  { color: #4caf50; background: rgba(76, 175, 80, 0.12); }
+.tc-momentum--up         { color: #80c784; background: rgba(76, 175, 80, 0.07); }
+.tc-momentum--strong-down { color: #cc3333; background: rgba(204, 51, 51, 0.12); }
+.tc-momentum--down       { color: #e57373; background: rgba(204, 51, 51, 0.07); }
+.tc-momentum--flat       { color: #555;    background: rgba(255, 255, 255, 0.05); }
+
+.tc-stage-warn {
+  font-size: 0.72rem;
+  color: #cc3333;
+  cursor: default;
+}
+
 .trend-card__details-hint {
   padding: 0 1.25rem 1rem;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid #2e2e2e;
 }
 
 .trend-card__growth-row {
@@ -176,7 +272,7 @@
 
 .growth-label {
   font-size: 0.7rem;
-  color: #999;
+  color: #666;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }

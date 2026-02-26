@@ -1,7 +1,7 @@
 .keywords-panel {
-  background: #fff;
+  background: #222222;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  border: 1px solid #2e2e2e;
   padding: 1.5rem;
 }
 
@@ -13,16 +13,17 @@
   font-size: 1.2rem;
   font-weight: 700;
   margin: 0 0 0.25rem;
+  color: #f0f0f0;
 }
 
 .keywords-panel__subtitle {
   font-size: 0.85rem;
-  color: #888;
+  color: #777;
   margin: 0;
 }
 
-.kw-count--seed { color: #16a34a; font-weight: 600; }
-.kw-count--user { color: #4a85a0; font-weight: 600; }
+.kw-count--seed { color: #4caf50; font-weight: 600; }
+.kw-count--user { color: #7ab3cc; font-weight: 600; }
 
 .keywords-panel__toolbar {
   display: flex;
@@ -35,15 +36,19 @@
   flex: 1;
   min-width: 160px;
   padding: 0.55rem 0.9rem;
-  border: 1px solid #ddd;
+  border: 1px solid #333333;
   border-radius: 8px;
   font-size: 0.9rem;
+  background: #1e1e1e;
+  color: #e0e0e0;
   outline: none;
   transition: border-color 0.2s;
 }
 
+.keywords-panel__search::placeholder { color: #555555; }
+
 .keywords-panel__search:focus {
-  border-color: #111111;
+  border-color: #f0a8b8;
 }
 
 .keywords-panel__add-form {
@@ -56,21 +61,25 @@
 .keywords-panel__add-input {
   flex: 1;
   padding: 0.55rem 0.9rem;
-  border: 1px solid #ddd;
+  border: 1px solid #333333;
   border-radius: 8px;
   font-size: 0.9rem;
+  background: #1e1e1e;
+  color: #e0e0e0;
   outline: none;
   transition: border-color 0.2s;
 }
 
+.keywords-panel__add-input::placeholder { color: #555555; }
+
 .keywords-panel__add-input:focus {
-  border-color: #111111;
+  border-color: #f0a8b8;
 }
 
 .keywords-panel__add-btn {
   padding: 0.55rem 1.1rem;
-  background: #111111;
-  color: #fff;
+  background: #333333;
+  color: #e0e0e0;
   border: none;
   border-radius: 8px;
   font-size: 0.9rem;
@@ -81,7 +90,7 @@
 }
 
 .keywords-panel__add-btn:hover:not(:disabled) {
-  background: #2a2a2a;
+  background: #3a3a3a;
 }
 
 .keywords-panel__add-btn:disabled {
@@ -96,7 +105,7 @@
 }
 
 .keywords-panel__status {
-  color: #999;
+  color: #666;
   font-size: 0.9rem;
   padding: 1rem 0;
 }
@@ -112,11 +121,11 @@
   text-align: left;
   font-size: 0.72rem;
   font-weight: 600;
-  color: #aaa;
+  color: #555555;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 0 0.75rem 0.6rem;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #2e2e2e;
 }
 
 .keywords-table thead th:first-child {
@@ -124,7 +133,7 @@
 }
 
 .keywords-table tbody tr {
-  border-bottom: 1px solid #f7f7f7;
+  border-bottom: 1px solid #2a2a2a;
   transition: background 0.1s;
 }
 
@@ -133,7 +142,21 @@
 }
 
 .keywords-table tbody tr:hover {
-  background: #fafafa;
+  background: #282828;
+}
+
+.kw-row--clickable {
+  cursor: pointer;
+}
+
+.kw-expand-hint {
+  font-size: 0.7rem;
+  color: #444;
+  transition: color 0.15s;
+}
+
+.kw-row--clickable:hover .kw-expand-hint {
+  color: #888;
 }
 
 .keywords-table td {
@@ -148,11 +171,11 @@
 .keywords-table__keyword {
   font-weight: 600;
   text-transform: capitalize;
-  color: #111111;
+  color: #e0e0e0;
 }
 
 .keywords-table__muted {
-  color: #999;
+  color: #666;
 }
 
 .keywords-table__action {
@@ -171,76 +194,76 @@
 }
 
 .kw-source-badge--seed {
-  background: #f0fdf4;
-  color: #16a34a;
-  border: 1px solid #bbf7d0;
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
 .kw-source-badge--user {
-  background: #e0eef5;
-  color: #4a85a0;
-  border: 1px solid #b8d4e5;
+  background: rgba(74, 133, 160, 0.15);
+  color: #7ab3cc;
+  border: 1px solid rgba(74, 133, 160, 0.3);
 }
 
 /* Actions */
 .kw-row--expanded {
-  background: #fafafa;
+  background: #282828;
 }
 
 .kw-detail-row {
-  background: #fafafa;
+  background: #1e1e1e;
 }
 
 .kw-detail-cell {
   padding: 0 0 1.5rem !important;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid #333333;
 }
 
 .kw-view-btn {
   background: none;
-  border: 1px solid #ddd;
+  border: 1px solid #333333;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #888;
+  color: #666;
   padding: 0.25rem 0.6rem;
   white-space: nowrap;
   transition: border-color 0.15s, color 0.15s;
 }
 
 .kw-view-btn:hover {
-  border-color: #111111;
-  color: #111111;
+  border-color: #e0e0e0;
+  color: #e0e0e0;
 }
 
 .kw-view-btn--active {
-  border-color: #111111;
-  color: #111111;
+  border-color: #e0e0e0;
+  color: #e0e0e0;
 }
 
 .kw-compare-btn {
   background: none;
-  border: 1px solid #ccc;
+  border: 1px solid #333333;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #888;
+  color: #666;
   padding: 0.25rem 0.6rem;
   white-space: nowrap;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 
 .kw-compare-btn:hover {
-  border-color: #111111;
-  color: #111111;
+  border-color: #e0e0e0;
+  color: #e0e0e0;
 }
 
 .kw-compare-btn--active {
-  background: #111111;
-  border-color: #111111;
-  color: #fff;
+  background: #e0e0e0;
+  border-color: #e0e0e0;
+  color: #111111;
 }
 
 .kw-compare-btn--active:hover {
@@ -256,12 +279,12 @@
 
 .kw-remove-btn {
   background: none;
-  border: 1px solid #ddd;
+  border: 1px solid #333333;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #aaa;
+  color: #555;
   padding: 0.25rem 0.6rem;
   white-space: nowrap;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
@@ -270,7 +293,7 @@
 .kw-remove-btn:hover:not(:disabled) {
   border-color: #e74c3c;
   color: #e74c3c;
-  background: #fff0f0;
+  background: rgba(231, 76, 60, 0.1);
 }
 
 .kw-remove-btn:disabled {
@@ -280,7 +303,7 @@
 
 .keywords-panel__hint {
   font-size: 0.78rem;
-  color: #bbb;
+  color: #444;
   margin: 1.25rem 0 0;
   text-align: center;
 }
@@ -292,9 +315,9 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #4a85a0;
-  background: #e0eef5;
-  border: 1px solid #b8d4e5;
+  color: #7ab3cc;
+  background: rgba(74, 133, 160, 0.15);
+  border: 1px solid rgba(74, 133, 160, 0.3);
   border-radius: 4px;
   padding: 0.1rem 0.4rem;
   vertical-align: middle;

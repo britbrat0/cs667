@@ -125,6 +125,26 @@ def _detect_lifecycle(keyword: str, volume_growth: float, composite_score: float
         return "Peak"
 
 
+def predict_stage_warning(current_stage: str, current_vg: float, projected_vg: float, slope: float) -> str | None:
+    """Return a human-readable warning if the trend is likely to transition lifecycle stages
+    within the next 7 days, or None if the stage looks stable."""
+    if current_stage == "Emerging" and projected_vg > 30 and slope > 1.5:
+        return "Approaching Accelerating"
+    if current_stage == "Accelerating" and slope > 2.0 and projected_vg > 45:
+        return "Nearing Peak"
+    if current_stage == "Accelerating" and slope < -1.5:
+        return "Growth slowing"
+    if current_stage == "Peak" and slope < -1.5:
+        return "Entering Saturation"
+    if current_stage == "Saturation" and slope < -2.5:
+        return "Approaching Decline"
+    if current_stage == "Decline" and slope < -3.5:
+        return "Nearing Dormant"
+    if current_stage == "Dormant" and slope > 1.5:
+        return "Signs of Revival"
+    return None
+
+
 def compute_and_store_scores(keyword: str):
     """Compute scores for all standard time periods and store in trend_scores."""
     conn = get_connection()

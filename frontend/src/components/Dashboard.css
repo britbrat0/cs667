@@ -36,8 +36,8 @@
   display: flex;
   gap: 1rem;
   padding: 1.25rem 2rem;
-  background: #fff;
-  border-bottom: 1px solid #e5e5e5;
+  background: #1a1a1a;
+  border-bottom: 1px solid #2e2e2e;
   flex-wrap: wrap;
 }
 
@@ -51,29 +51,36 @@
 .search-input {
   flex: 1;
   padding: 0.7rem 1rem;
-  border: 1px solid #e5e5e5;
+  border: 1px solid #333333;
   border-radius: 8px;
   font-size: 0.9rem;
+  background: #222222;
+  color: #e0e0e0;
+}
+
+.search-input::placeholder {
+  color: #666666;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #111111;
+  border-color: #f0a8b8;
 }
 
 .search-btn {
   padding: 0.7rem 1.5rem;
-  background: #111111;
-  color: #fff;
+  background: #333333;
+  color: #e0e0e0;
   border: none;
   border-radius: 8px;
   font-size: 0.9rem;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 0.2s;
 }
 
 .search-btn:hover {
-  background: #1a1a1a;
+  background: #3a3a3a;
 }
 
 .search-btn:disabled {
@@ -83,10 +90,11 @@
 
 .period-select {
   padding: 0.7rem 1rem;
-  border: 1px solid #e5e5e5;
+  border: 1px solid #333333;
   border-radius: 8px;
   font-size: 0.9rem;
-  background: #fff;
+  background: #222222;
+  color: #e0e0e0;
   cursor: pointer;
 }
 
@@ -110,8 +118,8 @@
 
 .search-redirect-notice {
   font-size: 0.875rem;
-  color: #737373;
-  background: #fff5f5;
+  color: #aaaaaa;
+  background: #2a1a1a;
   border-left: 3px solid #cc3333;
   padding: 0.6rem 1rem;
   border-radius: 0 6px 6px 0;
@@ -209,7 +217,7 @@
 }
 
 .search-suggestion__btn--primary {
-  background: #f0f0f0;
+  background: #e0e0e0;
   color: #111111;
   border: none;
 }
@@ -230,11 +238,11 @@
 }
 
 .empty-state {
-  background: #fff;
+  background: #222222;
   border-radius: 12px;
   padding: 3rem 2rem;
   text-align: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid #2e2e2e;
 }
 
 .status-detail {
@@ -300,7 +308,7 @@
 .trend-list-item {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0;
 }
 
 /* Search results */
@@ -324,9 +332,9 @@
 
 .back-btn {
   padding: 0.6rem 1.25rem;
-  background: #fff;
-  color: #111111;
-  border: 1px solid #e5e5e5;
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #333333;
   border-radius: 8px;
   font-size: 0.85rem;
   cursor: pointer;
@@ -334,8 +342,114 @@
 }
 
 .back-btn:hover {
-  background: #f0f0f0;
-  border-color: #111111;
+  background: #333333;
+  border-color: #555555;
+}
+
+/* Rising Challengers */
+.challengers-section {
+  margin-top: 2rem;
+  background: #222222;
+  border-radius: 12px;
+  border: 1px solid #2e2e2e;
+  padding: 1.25rem 1.5rem;
+}
+
+.challengers-section__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f0f0f0;
+  margin: 0 0 0.25rem;
+}
+
+.challengers-section__subtitle {
+  font-size: 0.8rem;
+  color: #666;
+  margin: 0 0 1.25rem;
+}
+
+.challengers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.challenger-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  border: 1px solid #333333;
+}
+
+.challenger__rank {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #888;
+  min-width: 2.5rem;
+  flex-shrink: 0;
+}
+
+.challenger__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.challenger__keyword {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  text-transform: capitalize;
+}
+
+.challenger__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.challenger__badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.challenger__badge--strong-up { color: #4caf50; background: rgba(76, 175, 80, 0.12); }
+.challenger__badge--up        { color: #80c784; background: rgba(76, 175, 80, 0.07); }
+.challenger__badge--flat      { color: #555;    background: rgba(255, 255, 255, 0.05); }
+
+.challenger__warn {
+  font-size: 0.72rem;
+  color: #cc8833;
+  background: rgba(204, 136, 51, 0.1);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.challenger__proj {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.challenger__proj-label {
+  font-size: 0.65rem;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.challenger__proj-rank {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #4caf50;
 }
 
 /* Mobile */

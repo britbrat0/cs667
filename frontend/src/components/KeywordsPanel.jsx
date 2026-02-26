@@ -153,7 +153,11 @@ export default function KeywordsPanel({ compareKeywords = [], onCompare, period 
               const isExpanded = expandedKeyword === kw.keyword
               return (
                 <>
-                  <tr key={kw.keyword} className={isExpanded ? 'kw-row--expanded' : ''}>
+                  <tr
+                    key={kw.keyword}
+                    className={`kw-row--clickable ${isExpanded ? 'kw-row--expanded' : ''}`}
+                    onClick={() => setExpandedKeyword(isExpanded ? null : kw.keyword)}
+                  >
                     <td className="keywords-table__keyword">
                       {kw.keyword}
                       {kw.scale === 'micro' && (
@@ -172,14 +176,9 @@ export default function KeywordsPanel({ compareKeywords = [], onCompare, period 
                       {kw.added_at ? new Date(kw.added_at).toLocaleDateString() : '—'}
                     </td>
                     <td className="keywords-table__action">
-                      <button
-                        className={`kw-view-btn ${isExpanded ? 'kw-view-btn--active' : ''}`}
-                        onClick={() => setExpandedKeyword(isExpanded ? null : kw.keyword)}
-                      >
-                        {isExpanded ? '▲ Hide' : '▼ View'}
-                      </button>
+                      <span className="kw-expand-hint">{isExpanded ? '▲' : '▼'}</span>
                     </td>
-                    <td className="keywords-table__action">
+                    <td className="keywords-table__action" onClick={e => e.stopPropagation()}>
                       {onCompare && (
                         <button
                           className={`kw-compare-btn ${inCompare ? 'kw-compare-btn--active' : ''}`}
@@ -189,7 +188,7 @@ export default function KeywordsPanel({ compareKeywords = [], onCompare, period 
                         </button>
                       )}
                     </td>
-                    <td className="keywords-table__action">
+                    <td className="keywords-table__action" onClick={e => e.stopPropagation()}>
                       {kw.source === 'seed' ? (
                         <span className="kw-lock" title="Seed keyword — protected">🔒</span>
                       ) : (
