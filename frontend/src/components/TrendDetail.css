@@ -37,32 +37,28 @@
 
 .trend-detail__scores {
   display: flex;
-  gap: 1.5rem;
+  gap: 2rem;
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
+  padding-top: 0.75rem;
 }
 
 .score-item {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.75rem 1.25rem;
-  background: #2a2a2a;
-  border-radius: 8px;
-  min-width: 120px;
+  gap: 0.2rem;
 }
 
 .score-label {
   font-size: 0.7rem;
-  color: #777777;
+  color: #aaa;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .score-value {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #f0f0f0;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .trend-detail__charts {

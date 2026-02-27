@@ -25,6 +25,7 @@ export default function Dashboard() {
   const scrapeTimerRef = useRef(null)
   const [forecastMap, setForecastMap] = useState({})
   const [challengers, setChallengers] = useState([])
+  const [compareSeries, setCompareSeries] = useState([])
 
   const SCRAPE_STEPS = [
     'Checking Google Trends data...',
@@ -287,7 +288,7 @@ export default function Dashboard() {
             )}
 
             {!searchLoading && searchResult && (
-              <TrendDetail keyword={searchResult.keyword} period={period} />
+              <TrendDetail keyword={searchResult.keyword} period={period} onSearch={(kw) => { setView('search'); setSearchQuery(kw); setExpandedKeyword(null); setSimilarSuggestion(null); setSearchResult(null); doSearch(kw) }} />
             )}
 
             {!searchLoading && !searchResult && !similarSuggestion && (
@@ -305,6 +306,7 @@ export default function Dashboard() {
             <CompareSection
               compareKeywords={compareKeywords}
               onKeywordsChange={setCompareKeywords}
+              onSeriesChange={setCompareSeries}
               period={period}
             />
           </div>
@@ -337,7 +339,7 @@ export default function Dashboard() {
                         forecast={forecastMap[trend.keyword] || null}
                       />
                       {expandedKeyword === trend.keyword && (
-                        <TrendDetail keyword={trend.keyword} period={period} inline />
+                        <TrendDetail keyword={trend.keyword} period={period} inline onSearch={(kw) => { setView('search'); setSearchQuery(kw); setExpandedKeyword(null); setSimilarSuggestion(null); setSearchResult(null); doSearch(kw) }} />
                       )}
                     </div>
                   ))}
@@ -388,6 +390,7 @@ export default function Dashboard() {
         topTrends: trends,
         trackedKeywords,
         compareKeywords,
+        compareSeries: view === 'compare' ? compareSeries : undefined,
       }} />
     </div>
   )

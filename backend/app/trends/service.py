@@ -9,14 +9,18 @@ LIFECYCLE_STAGES = ["Emerging", "Accelerating", "Peak", "Saturation", "Decline",
 
 
 def _get_growth_rate(values_first_half: list[float], values_second_half: list[float]) -> float:
-    """Calculate percentage growth between two halves of a time window."""
+    """Calculate percentage growth between two halves of a time window.
+
+    Uses a floor of 5 on the denominator to prevent astronomical percentages when a trend
+    starts from near-zero on Google's relative 0-100 scale. Capped at ±500%.
+    """
     if not values_first_half or not values_second_half:
         return 0.0
     avg_first = sum(values_first_half) / len(values_first_half)
     avg_second = sum(values_second_half) / len(values_second_half)
-    if avg_first == 0:
-        return 100.0 if avg_second > 0 else 0.0
-    return ((avg_second - avg_first) / avg_first) * 100
+    denom = max(avg_first, 5.0)
+    result = ((avg_second - denom) / denom) * 100
+    return max(min(result, 500.0), -100.0)
 
 
 def compute_composite_score(keyword: str, period_days: int) -> dict:
@@ -29,24 +33,18 @@ def compute_composite_score(keyword: str, period_days: int) -> dict:
     start = now - timedelta(days=period_days)
     midpoint = now - timedelta(days=period_days / 2)
 
-    # Volume metrics: search_volume (Google) + sold_count (eBay) + mention_count (Reddit) + listing_count (Depop)
-    volume_metrics = ("search_volume", "sold_count", "mention_count", "listing_count")
+    # Volume growth: use daily-averaged search_volume only (Google Trends 0-100 relative scale).
+    # Marketplace metrics (sold_count, listing_count) and Reddit mention_count are on incompatible
+    # scales and sampling frequencies — including them distorts the growth calculation.
+    vol_rows = conn.execute(
+        "SELECT AVG(value) as value, DATE(recorded_at) as day FROM trend_data "
+        "WHERE keyword = ? AND source = 'google_trends' AND metric = 'search_volume' "
+        "AND recorded_at >= ? GROUP BY DATE(recorded_at) ORDER BY day",
+        (keyword, start.isoformat()),
+    ).fetchall()
 
-    first_half_volumes = []
-    second_half_volumes = []
-
-    for metric in volume_metrics:
-        rows = conn.execute(
-            "SELECT value, recorded_at FROM trend_data WHERE keyword = ? AND metric = ? AND recorded_at >= ? ORDER BY recorded_at",
-            (keyword, metric, start.isoformat()),
-        ).fetchall()
-
-        for row in rows:
-            recorded = row["recorded_at"]
-            if recorded < midpoint.isoformat():
-                first_half_volumes.append(row["value"])
-            else:
-                second_half_volumes.append(row["value"])
+    first_half_volumes = [r["value"] for r in vol_rows if r["day"] + "T00:00:00" < midpoint.isoformat()]
+    second_half_volumes = [r["value"] for r in vol_rows if r["day"] + "T00:00:00" >= midpoint.isoformat()]
 
     volume_growth = _get_growth_rate(first_half_volumes, second_half_volumes)
 
@@ -86,7 +84,11 @@ def _detect_lifecycle(keyword: str, volume_growth: float, composite_score: float
     """Determine lifecycle stage based on volume levels and growth trajectory.
     Scale-aware: micro trends use lower absolute volume thresholds."""
     volume_rows = conn.execute(
-        "SELECT SUM(value) as total FROM trend_data WHERE keyword = ? AND metric IN ('search_volume', 'sold_count', 'mention_count', 'listing_count') AND recorded_at >= ?",
+        "SELECT SUM(avg_val) as total FROM ("
+        "  SELECT AVG(value) as avg_val FROM trend_data "
+        "  WHERE keyword = ? AND source = 'google_trends' AND metric = 'search_volume' AND recorded_at >= ? "
+        "  GROUP BY DATE(recorded_at)"
+        ")",
         (keyword, start.isoformat()),
     ).fetchone()
 
@@ -265,7 +267,66 @@ def get_keyword_details(keyword: str, period_days: int = 7) -> dict:
         (keyword, start),
     ).fetchall()
 
+    # eBay listing sentiment history
+    ebay_sentiment_rows = conn.execute(
+        "SELECT value, recorded_at FROM trend_data WHERE keyword = ? AND source = 'ebay' AND metric = 'sentiment_score' AND recorded_at >= ? ORDER BY recorded_at",
+        (keyword, start),
+    ).fetchall()
+
+    # Reddit mentions + sentiment history
+    reddit_mention_rows = conn.execute(
+        "SELECT value, recorded_at FROM trend_data WHERE keyword = ? AND source = 'reddit' AND metric = 'mention_count' AND recorded_at >= ? ORDER BY recorded_at",
+        (keyword, start),
+    ).fetchall()
+    reddit_sentiment_rows = conn.execute(
+        "SELECT value, recorded_at FROM trend_data WHERE keyword = ? AND source = 'reddit' AND metric = 'sentiment_score' AND recorded_at >= ? ORDER BY recorded_at",
+        (keyword, start),
+    ).fetchall()
+
+    # TikTok mentions + sentiment history
+    tiktok_mention_rows = conn.execute(
+        "SELECT value, recorded_at FROM trend_data WHERE keyword = ? AND source = 'tiktok' AND metric = 'tiktok_mentions' AND recorded_at >= ? ORDER BY recorded_at",
+        (keyword, start),
+    ).fetchall()
+    tiktok_sentiment_rows = conn.execute(
+        "SELECT value, recorded_at FROM trend_data WHERE keyword = ? AND source = 'tiktok' AND metric = 'tiktok_sentiment' AND recorded_at >= ? ORDER BY recorded_at",
+        (keyword, start),
+    ).fetchall()
+
+    # Sell-through: latest active listing count + latest 30d sold count
+    latest_active = conn.execute(
+        "SELECT value FROM trend_data WHERE keyword = ? AND source = 'ebay' AND metric = 'sold_count' ORDER BY recorded_at DESC LIMIT 1",
+        (keyword,),
+    ).fetchone()
+    latest_sold = conn.execute(
+        "SELECT value FROM trend_data WHERE keyword = ? AND source = 'ebay' AND metric = 'sold_count_30d' ORDER BY recorded_at DESC LIMIT 1",
+        (keyword,),
+    ).fetchone()
+
     conn.close()
+
+    sell_through = None
+    if latest_active and latest_sold:
+        active_val = latest_active["value"]
+        sold_val = latest_sold["value"]
+        total = active_val + sold_val
+        rate = (sold_val / total * 100.0) if total > 0 else None
+        sell_through = {
+            "sold_30d": int(sold_val),
+            "active": int(active_val),
+            "rate": round(rate, 1) if rate is not None else None,
+        }
+
+    # Coefficient of variation: std_dev / avg_price * 100, so the volatility label is
+    # relative to the item's price rather than an absolute dollar threshold.
+    volatility_val = volatility["value"] if volatility else None
+    all_price_values = [r["value"] for r in ebay_prices if r["value"] and r["value"] > 0]
+    overall_avg_price = sum(all_price_values) / len(all_price_values) if all_price_values else None
+    volatility_cv = (
+        round(volatility_val / overall_avg_price * 100, 1)
+        if volatility_val and overall_avg_price and overall_avg_price > 0
+        else None
+    )
 
     return {
         "keyword": keyword,
@@ -274,7 +335,16 @@ def get_keyword_details(keyword: str, period_days: int = 7) -> dict:
         "search_volume": [{"value": r["value"], "date": r["recorded_at"]} for r in search_volume],
         "ebay_avg_price": [{"value": r["value"], "date": r["recorded_at"]} for r in ebay_prices],
         "sales_volume": [{"value": r["value"], "date": r["recorded_at"]} for r in sales_volume],
-        "price_volatility": volatility["value"] if volatility else None,
+        "price_volatility": volatility_val,
+        "price_volatility_cv": volatility_cv,
         "regions_us": [{"region": r["region"], "value": r["value"]} for r in us_regions],
         "regions_global": [{"region": r["region"], "value": r["value"]} for r in global_regions],
+        "ebay_sentiment": [{"date": r["recorded_at"], "value": r["value"]} for r in ebay_sentiment_rows],
+        "social_mentions": {
+            "reddit": [{"date": r["recorded_at"], "count": r["value"]} for r in reddit_mention_rows],
+            "reddit_sentiment": [{"date": r["recorded_at"], "value": r["value"]} for r in reddit_sentiment_rows],
+            "tiktok": [{"date": r["recorded_at"], "count": r["value"]} for r in tiktok_mention_rows],
+            "tiktok_sentiment": [{"date": r["recorded_at"], "value": r["value"]} for r in tiktok_sentiment_rows],
+        },
+        "sell_through": sell_through,
     }

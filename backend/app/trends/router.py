@@ -408,6 +408,24 @@ def trend_details(keyword: str, period: int = 7, user: str = Depends(get_current
     return details
 
 
+@router.get("/{keyword}/seasonal")
+def trend_seasonal(keyword: str, user: str = Depends(get_current_user)):
+    """Get seasonal search_volume pattern by month-of-year for a keyword."""
+    from app.trends.seasonal import get_seasonal_pattern
+    return {"keyword": _normalize(keyword), "seasonal": get_seasonal_pattern(_normalize(keyword))}
+
+
+@router.get("/{keyword}/correlations")
+def trend_correlations(keyword: str, period: int = 30, top: int = 5, user: str = Depends(get_current_user)):
+    """Get keywords most correlated with this keyword's search_volume trend."""
+    from app.trends.correlation import get_keyword_correlations
+    return {
+        "keyword": _normalize(keyword),
+        "period_days": period,
+        "correlations": get_keyword_correlations(_normalize(keyword), period_days=period, top_n=top),
+    }
+
+
 @router.get("/{keyword}/forecast")
 def trend_forecast(keyword: str, horizon: int = 14, user: str = Depends(get_current_user)):
     """Forecast future search volume for a keyword using polynomial regression."""

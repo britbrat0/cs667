@@ -1,0 +1,56 @@
+.info-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.info-tip__btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 11px;
+  color: #555;
+  line-height: 1;
+  transition: color 0.15s;
+  user-select: none;
+}
+
+.info-tip__btn:hover {
+  color: #aaa;
+}
+
+.info-tip__box {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  color: #c0c0c0;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  padding: 8px 11px;
+  width: 230px;
+  white-space: normal;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Caret */
+.info-tip__box::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #3a3a3a;
+}

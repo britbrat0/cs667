@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
 import LifecycleBadge from './LifecycleBadge'
+import InfoTooltip from './Charts/InfoTooltip'
 import './TrendCard.css'
 
 function ForecastColumns({ forecast }) {
@@ -12,16 +13,9 @@ function ForecastColumns({ forecast }) {
   else if (rank_delta < 0) deltaEl = <span className="tc-delta tc-delta--down">▼{Math.abs(rank_delta)}</span>
   else deltaEl = <span className="tc-delta tc-delta--flat">↔</span>
 
-  let momentumEl = null
-  if (slope > 2) momentumEl = <span className="tc-momentum tc-momentum--strong-up">⬆ surging</span>
-  else if (slope > 0.5) momentumEl = <span className="tc-momentum tc-momentum--up">↑ rising</span>
-  else if (slope < -2) momentumEl = <span className="tc-momentum tc-momentum--strong-down">⬇ fading</span>
-  else if (slope < -0.5) momentumEl = <span className="tc-momentum tc-momentum--down">↓ cooling</span>
-  else momentumEl = <span className="tc-momentum tc-momentum--flat">→ stable</span>
-
   return (
     <div className="trend-card__forecast" onClick={e => e.stopPropagation()}>
-      <span className="tc-forecast-label">7-day forecast</span>
+      <span className="tc-forecast-label">7-day forecast <InfoTooltip text="Projected rank in 7 days based on recent search volume slope. ▲ = rising, ▼ = falling, ↔ = stable." /></span>
       <div className="tc-forecast-ranks">
         <span className="tc-rank-now">#{current_rank}</span>
         <span className="tc-rank-arrow">→</span>
@@ -30,10 +24,11 @@ function ForecastColumns({ forecast }) {
         </span>
         {deltaEl}
       </div>
-      <div className="tc-forecast-badges">
-        {momentumEl}
-        {stage_warning && <span className="tc-stage-warn" title={stage_warning}>⚠</span>}
-      </div>
+      {stage_warning && (
+        <div className="tc-forecast-badges">
+          <span className="tc-stage-warn">⚠ {stage_warning}</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -90,6 +85,7 @@ export default function TrendCard({ trend, isExpanded, onClick, onRemove, onComp
           <div className="trend-card__meta">
             <span className="trend-card__score" style={{ color: scoreColor }}>
               {scorePrefix}{trend.composite_score?.toFixed(1)}
+              <InfoTooltip text="Composite score: 60% volume growth + 40% price growth. Positive = trending up, negative = declining." />
             </span>
             {trend.lifecycle_stage && (
               <LifecycleBadge stage={trend.lifecycle_stage} size="small" />
@@ -127,13 +123,13 @@ export default function TrendCard({ trend, isExpanded, onClick, onRemove, onComp
         <div className="trend-card__details-hint">
           <div className="trend-card__growth-row">
             <div className="trend-card__growth-item">
-              <span className="growth-label">Volume Growth</span>
+              <span className="growth-label">Volume Growth <InfoTooltip text="% change in Google Trends search interest comparing the first half vs second half of the selected period." /></span>
               <span className="growth-value" style={{ color: trend.volume_growth > 0 ? '#27ae60' : '#e74c3c' }}>
                 {trend.volume_growth > 0 ? '+' : ''}{trend.volume_growth?.toFixed(1)}%
               </span>
             </div>
             <div className="trend-card__growth-item">
-              <span className="growth-label">Price Growth</span>
+              <span className="growth-label">Price Growth <InfoTooltip text="% change in average selling price across eBay, Etsy, Poshmark, and Depop comparing the first half vs second half of the selected period." /></span>
               <span className="growth-value" style={{ color: trend.price_growth > 0 ? '#27ae60' : '#e74c3c' }}>
                 {trend.price_growth > 0 ? '+' : ''}{trend.price_growth?.toFixed(1)}%
               </span>

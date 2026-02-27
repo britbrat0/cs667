@@ -1,3 +1,4 @@
+import InfoTooltip from './Charts/InfoTooltip'
 import './TrendCycleIndicator.css'
 
 const STAGES = [
@@ -34,7 +35,7 @@ export default function TrendCycleIndicator({ stage }) {
 
   return (
     <div className="trend-cycle">
-      <p className="trend-cycle__title">Lifecycle Position</p>
+      <p className="trend-cycle__title">Lifecycle Position <InfoTooltip text="Where this trend sits in its market cycle: Emerging → Accelerating → Peak → Saturation → Decline → Dormant. Based on search volume level and growth trajectory." /></p>
 
       {/* SVG curve — fills full width via preserveAspectRatio none, fixed height */}
       <svg

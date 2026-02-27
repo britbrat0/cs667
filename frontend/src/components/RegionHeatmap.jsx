@@ -5,6 +5,7 @@ import {
   Geography,
 } from 'react-simple-maps'
 import { scaleLinear } from 'd3-scale'
+import InfoTooltip from './Charts/InfoTooltip'
 import './RegionHeatmap.css'
 
 const US_GEO_URL = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json'
@@ -34,7 +35,7 @@ export default function RegionHeatmap({ usRegions }) {
   if (!usRegions || usRegions.length === 0) {
     return (
       <div className="chart-container">
-        <h4>US Region Heatmap</h4>
+        <h4>US Region Heatmap <InfoTooltip text="Google Trends search interest by US state, relative to the peak state (100 = highest interest). Based on the past 3 months. Hover a state for its value." /></h4>
         <p className="chart-empty">No region data available</p>
       </div>
     )

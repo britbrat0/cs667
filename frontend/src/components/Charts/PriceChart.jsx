@@ -7,6 +7,7 @@ import {
   Tooltip,
   LabelList,
 } from 'recharts'
+import InfoTooltip from './InfoTooltip'
 
 export default function PriceChart({ data }) {
   if (!data || data.length === 0) {
@@ -22,7 +23,7 @@ export default function PriceChart({ data }) {
 
   return (
     <div className="chart-container">
-      <h4>Avg Sold Price Over Time</h4>
+      <h4>Avg Sold Price Over Time <InfoTooltip text="Daily average selling price across eBay, Etsy, Poshmark, and Depop, averaged across all sources per day." /></h4>
       <ResponsiveContainer width="100%" height={250}>
         <LineChart data={formatted}>
           <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#888' }} />

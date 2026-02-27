@@ -33,10 +33,26 @@ def _scrape_google_trends_once(keyword: str) -> bool:
         if not interest_df.empty and keyword in interest_df.columns:
             conn = get_connection()
             for date, row in interest_df.iterrows():
-                conn.execute(
-                    "INSERT OR IGNORE INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
-                    (keyword, "google_trends", "search_volume", float(row[keyword]), date.isoformat()),
-                )
+                # Normalize to a plain UTC date string so re-scrapes overwrite rather than duplicate
+                date_str = date.strftime("%Y-%m-%dT00:00:00")
+                value = float(row[keyword])
+                # Upsert: update if a row already exists for this keyword+date, insert otherwise
+                existing = conn.execute(
+                    "SELECT rowid, value FROM trend_data WHERE keyword = ? AND source = 'google_trends' AND metric = 'search_volume' AND recorded_at = ? AND region IS NULL",
+                    (keyword, date_str),
+                ).fetchone()
+                if existing:
+                    # Only overwrite a zero with a real value, never overwrite a real value with zero
+                    if existing["value"] == 0.0 or value > existing["value"]:
+                        conn.execute(
+                            "UPDATE trend_data SET value = ? WHERE rowid = ?",
+                            (value, existing["rowid"]),
+                        )
+                else:
+                    conn.execute(
+                        "INSERT INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
+                        (keyword, "google_trends", "search_volume", value, date_str),
+                    )
             conn.commit()
             conn.close()
 

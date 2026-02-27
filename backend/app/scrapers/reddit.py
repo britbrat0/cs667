@@ -6,6 +6,12 @@ from datetime import datetime, timezone
 import requests
 from app.database import get_connection
 
+try:
+    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+    _sia = SentimentIntensityAnalyzer()
+except ImportError:
+    _sia = None
+
 logger = logging.getLogger(__name__)
 
 FASHION_SUBREDDITS = [
@@ -46,6 +52,8 @@ def scrape_reddit(keyword: str) -> bool:
     """Scrape Reddit for mentions of a keyword across fashion subreddits using public JSON endpoints."""
     try:
         total_mentions = 0
+        titles = []
+        scores = []
 
         for sub_name in FASHION_SUBREDDITS:
             url = f"https://www.reddit.com/r/{sub_name}/search.json?q={requests.utils.quote(keyword)}&restrict_sr=1&sort=new&t=week&limit=100"
@@ -54,6 +62,13 @@ def scrape_reddit(keyword: str) -> bool:
             if data and "data" in data:
                 children = data["data"].get("children", [])
                 total_mentions += len(children)
+                for child in children:
+                    post = child.get("data", {})
+                    title = post.get("title", "")
+                    score = post.get("score", 0)
+                    if title:
+                        titles.append(title)
+                    scores.append(score)
 
             # Be respectful with rate limiting
             time.sleep(random.uniform(1.0, 2.0))
@@ -64,6 +79,21 @@ def scrape_reddit(keyword: str) -> bool:
             "INSERT INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
             (keyword, "reddit", "mention_count", float(total_mentions), now),
         )
+
+        if _sia and titles:
+            avg_sentiment = sum(_sia.polarity_scores(t)["compound"] for t in titles) / len(titles)
+            conn.execute(
+                "INSERT OR IGNORE INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
+                (keyword, "reddit", "sentiment_score", avg_sentiment, now),
+            )
+
+        if scores:
+            avg_upvotes = sum(scores) / len(scores)
+            conn.execute(
+                "INSERT OR IGNORE INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
+                (keyword, "reddit", "engagement", avg_upvotes, now),
+            )
+
         conn.commit()
         conn.close()
 

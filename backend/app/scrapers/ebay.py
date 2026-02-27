@@ -8,7 +8,15 @@ import requests
 from app.config import settings
 from app.database import get_connection
 
+try:
+    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+    _sia = SentimentIntensityAnalyzer()
+except ImportError:
+    _sia = None
+
 logger = logging.getLogger(__name__)
+
+EBAY_FINDING_URL = "https://svcs.ebay.com/services/search/FindingService/v1"
 
 # eBay OAuth token endpoint (sandbox if keys contain SBX, else production)
 EBAY_AUTH_URL_PROD = "https://api.ebay.com/identity/v1/oauth2/token"
@@ -123,6 +131,7 @@ def scrape_ebay(keyword: str) -> bool:
             return True
 
         prices = []
+        titles = []
         images_to_store = []
         for item in items:
             price_info = item.get("price", {})
@@ -139,6 +148,8 @@ def scrape_ebay(keyword: str) -> bool:
             image_url = item.get("image", {}).get("imageUrl")
             item_url = item.get("itemWebUrl")
             title = item.get("title")
+            if title:
+                titles.append(title)
             if image_url and len(images_to_store) < 6:
                 images_to_store.append((keyword, "ebay", image_url, title, item_price, item_url))
 
@@ -172,6 +183,14 @@ def scrape_ebay(keyword: str) -> bool:
             (keyword, "ebay", "price_volatility", volatility, now),
         )
 
+        # Title sentiment
+        if _sia and titles:
+            avg_sentiment = sum(_sia.polarity_scores(t)["compound"] for t in titles) / len(titles)
+            conn.execute(
+                "INSERT OR IGNORE INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
+                (keyword, "ebay", "sentiment_score", avg_sentiment, now),
+            )
+
         for img in images_to_store:
             conn.execute(
                 "INSERT OR IGNORE INTO trend_images (keyword, source, image_url, title, price, item_url) VALUES (?, ?, ?, ?, ?, ?)",
@@ -190,9 +209,66 @@ def scrape_ebay(keyword: str) -> bool:
         conn.close()
 
         logger.info(f"eBay API scrape complete for '{keyword}': {listing_count} items, avg ${avg_price:.2f}")
+
+        # Non-fatal: also fetch sold counts via Finding API
+        try:
+            scrape_ebay_sold(keyword)
+        except Exception as e:
+            logger.warning(f"eBay sold count scrape failed for '{keyword}': {e}")
+
         time.sleep(random.uniform(0.5, 1.5))
         return True
 
     except Exception as e:
         logger.error(f"eBay API scrape failed for '{keyword}': {e}")
         return False
+
+
+def scrape_ebay_sold(keyword: str) -> bool:
+    """Fetch sold item count from eBay Finding API to support sell-through rate calculation."""
+    if not settings.ebay_app_id:
+        return False
+
+    params = {
+        "OPERATION-NAME": "findCompletedItems",
+        "SERVICE-VERSION": "1.0.0",
+        "SECURITY-APPNAME": settings.ebay_app_id,
+        "RESPONSE-DATA-FORMAT": "JSON",
+        "REST-PAYLOAD": "",
+        "keywords": keyword,
+        "categoryId": "11450",
+        "itemFilter(0).name": "SoldItemsOnly",
+        "itemFilter(0).value": "true",
+        "paginationInput.entriesPerPage": "100",
+    }
+
+    resp = requests.get(
+        EBAY_FINDING_URL,
+        params=params,
+        headers={"X-EBAY-SOA-SECURITY-APPNAME": settings.ebay_app_id},
+        timeout=20,
+    )
+
+    if resp.status_code != 200:
+        logger.warning(f"eBay Finding API returned {resp.status_code} for '{keyword}'")
+        return False
+
+    data = resp.json()
+    try:
+        result = data.get("findCompletedItemsResponse", [{}])[0]
+        items = result.get("searchResult", [{}])[0].get("item", [])
+        count = float(len(items))
+    except (KeyError, IndexError, TypeError):
+        count = 0.0
+
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_connection()
+    conn.execute(
+        "INSERT OR IGNORE INTO trend_data (keyword, source, metric, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
+        (keyword, "ebay", "sold_count_30d", count, now),
+    )
+    conn.commit()
+    conn.close()
+
+    logger.info(f"eBay sold count for '{keyword}': {count}")
+    return True

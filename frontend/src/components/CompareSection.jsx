@@ -7,7 +7,7 @@ import './CompareSection.css'
 const COLORS = ['#cc3333', '#7c3aed', '#db2777', '#0891b2', '#b45309', '#0f766e']
 const MAX_COMPARE = 6
 
-export default function CompareSection({ compareKeywords, onKeywordsChange, period = 30 }) {
+export default function CompareSection({ compareKeywords, onKeywordsChange, onSeriesChange, period = 30 }) {
   const [compareData, setCompareData] = useState({ keywords: [], series: [] })
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(true)
@@ -24,6 +24,7 @@ export default function CompareSection({ compareKeywords, onKeywordsChange, peri
       const res = await api.get('/compare/data', { params: { period } })
       setCompareData(res.data)
       if (onKeywordsChange) onKeywordsChange(res.data.keywords || [])
+      if (onSeriesChange) onSeriesChange(res.data.series || [])
     } catch {
       setCompareData({ keywords: [], series: [] })
     } finally {

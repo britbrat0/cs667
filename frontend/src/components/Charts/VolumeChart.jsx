@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
+import InfoTooltip from './InfoTooltip'
 
 export default function VolumeChart({ data, forecastData }) {
   if (!data || data.length === 0) {
@@ -26,7 +27,7 @@ export default function VolumeChart({ data, forecastData }) {
   if (!forecastData || forecastData.length === 0) {
     return (
       <div className="chart-container">
-        <h4>Search Volume Over Time</h4>
+        <h4>Search Volume Over Time <InfoTooltip text="Google Trends relative search interest (0–100 scale). 100 = peak popularity for this keyword in the selected period. Dashed line shows the 7-day forecast." /></h4>
         <ResponsiveContainer width="100%" height={250}>
           <ComposedChart data={formatted}>
             <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#888' }} />
@@ -74,7 +75,7 @@ export default function VolumeChart({ data, forecastData }) {
 
   return (
     <div className="chart-container">
-      <h4>Search Volume Over Time</h4>
+      <h4>Search Volume Over Time <InfoTooltip text="Google Trends relative search interest (0–100 scale). 100 = peak popularity for this keyword in the selected period. Dashed line shows the 7-day forecast." /></h4>
       <ResponsiveContainer width="100%" height={280}>
         <ComposedChart data={combined}>
           <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#888' }} interval="preserveStartEnd" />

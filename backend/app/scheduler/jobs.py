@@ -8,6 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from app.scrapers.google_trends import scrape_google_trends
 from app.scrapers.ebay import scrape_ebay
 from app.scrapers.reddit import scrape_reddit
+from app.scrapers.tiktok import scrape_tiktok
 from app.scrapers.depop import scrape_depop
 from app.scrapers.etsy import scrape_etsy
 from app.scrapers.poshmark import scrape_poshmark
@@ -30,6 +31,10 @@ def scrape_all_sources():
         scrape_google_trends(keyword)
         scrape_ebay(keyword)
         scrape_reddit(keyword)
+        try:
+            scrape_tiktok(keyword)
+        except Exception as e:
+            logger.warning(f"TikTok scrape skipped for '{keyword}': {e}")
         scrape_depop(keyword)
         scrape_etsy(keyword)
         scrape_poshmark(keyword)
@@ -130,6 +135,10 @@ def scrape_single_keyword(keyword: str):
     scrape_google_trends(keyword)
     scrape_ebay(keyword)
     scrape_reddit(keyword)
+    try:
+        scrape_tiktok(keyword)
+    except Exception as e:
+        logger.warning(f"TikTok scrape skipped for '{keyword}': {e}")
     scrape_depop(keyword)
     scrape_etsy(keyword)
     scrape_poshmark(keyword)

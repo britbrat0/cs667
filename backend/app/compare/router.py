@@ -131,13 +131,21 @@ def get_comparison_data(period: int = 30, user: str = Depends(get_current_user))
             (kw, start),
         ).fetchall()
 
-        # Latest score
+        # Score matching the selected period; fall back to nearest available period
         score_row = conn.execute(
             "SELECT composite_score, volume_growth, price_growth, lifecycle_stage "
-            "FROM trend_scores WHERE keyword = ? AND period_days = 7 "
+            "FROM trend_scores WHERE keyword = ? AND period_days = ? "
             "ORDER BY computed_at DESC LIMIT 1",
-            (kw,),
+            (kw, period),
         ).fetchone()
+        if not score_row:
+            # Fall back to any available score for this keyword
+            score_row = conn.execute(
+                "SELECT composite_score, volume_growth, price_growth, lifecycle_stage "
+                "FROM trend_scores WHERE keyword = ? "
+                "ORDER BY ABS(period_days - ?) ASC, computed_at DESC LIMIT 1",
+                (kw, period),
+            ).fetchone()
 
         # Latest avg price (any source)
         price_row = conn.execute(

@@ -4,10 +4,16 @@ import VolumeChart from './Charts/VolumeChart'
 import PriceChart from './Charts/PriceChart'
 import SalesVolumeChart from './Charts/SalesVolumeChart'
 import VolatilityDisplay from './Charts/VolatilityDisplay'
+import SentimentChart from './Charts/SentimentChart'
+import SocialMentionsChart from './Charts/SocialMentionsChart'
+import SeasonalChart from './Charts/SeasonalChart'
+import SellThroughChart from './Charts/SellThroughChart'
+import CorrelationPanel from './CorrelationPanel'
 import RegionHeatmap from './RegionHeatmap'
 import LifecycleBadge from './LifecycleBadge'
 import TrendMoodboard from './TrendMoodboard'
 import TrendCycleIndicator from './TrendCycleIndicator'
+import InfoTooltip from './Charts/InfoTooltip'
 import './TrendDetail.css'
 
 const HORIZON_OPTIONS = [
@@ -16,7 +22,7 @@ const HORIZON_OPTIONS = [
   { label: '30 days', value: 30 },
 ]
 
-export default function TrendDetail({ keyword, period, inline = false }) {
+export default function TrendDetail({ keyword, period, inline = false, onSearch }) {
   const [details, setDetails] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showForecast, setShowForecast] = useState(false)
@@ -24,6 +30,7 @@ export default function TrendDetail({ keyword, period, inline = false }) {
   const [forecastData, setForecastData] = useState(null)
   const [forecastLoading, setForecastLoading] = useState(false)
   const [forecastError, setForecastError] = useState('')
+  const [seasonalData, setSeasonalData] = useState([])
 
   useEffect(() => {
     if (!keyword) return
@@ -34,6 +41,14 @@ export default function TrendDetail({ keyword, period, inline = false }) {
       .catch(() => setDetails(null))
       .finally(() => setLoading(false))
   }, [keyword, period])
+
+  useEffect(() => {
+    if (!keyword) return
+    api
+      .get(`/trends/${encodeURIComponent(keyword)}/seasonal`)
+      .then((res) => setSeasonalData(res.data.seasonal || []))
+      .catch(() => setSeasonalData([]))
+  }, [keyword])
 
   useEffect(() => {
     if (!showForecast) return
@@ -63,33 +78,30 @@ export default function TrendDetail({ keyword, period, inline = false }) {
 
   return (
     <div className={`trend-detail${inline ? ' trend-detail--inline' : ''}`}>
-      {!inline && (
+      {!inline && details.score?.lifecycle_stage && (
         <div className="trend-detail__header">
-          <h3>{keyword}</h3>
-          {details.score?.lifecycle_stage && (
-            <LifecycleBadge stage={details.score.lifecycle_stage} size="large" />
-          )}
+          <LifecycleBadge stage={details.score.lifecycle_stage} size="large" />
         </div>
       )}
 
       {!inline && details.score && (
         <div className="trend-detail__scores">
           <div className="score-item">
-            <span className="score-label">Composite Score</span>
-            <span className="score-value">
-              {details.score.composite_score?.toFixed(1)}
+            <span className="score-label">Composite Score <InfoTooltip text="Weighted trend score: 60% volume growth + 40% price growth. Positive = trending up, negative = declining." /></span>
+            <span className="score-value" style={{ color: details.score.composite_score > 0 ? '#27ae60' : details.score.composite_score < 0 ? '#e74c3c' : '#aaa' }}>
+              {details.score.composite_score > 0 ? '+' : ''}{details.score.composite_score?.toFixed(1)}
             </span>
           </div>
           <div className="score-item">
-            <span className="score-label">Volume Growth</span>
-            <span className="score-value">
-              {details.score.volume_growth?.toFixed(1)}%
+            <span className="score-label">Volume Growth <InfoTooltip text="% change in Google Trends search interest comparing the first half vs second half of the selected period." /></span>
+            <span className="score-value" style={{ color: details.score.volume_growth > 0 ? '#27ae60' : details.score.volume_growth < 0 ? '#e74c3c' : '#aaa' }}>
+              {details.score.volume_growth > 0 ? '+' : ''}{details.score.volume_growth?.toFixed(1)}%
             </span>
           </div>
           <div className="score-item">
-            <span className="score-label">Price Growth</span>
-            <span className="score-value">
-              {details.score.price_growth?.toFixed(1)}%
+            <span className="score-label">Price Growth <InfoTooltip text="% change in average selling price across eBay, Etsy, Poshmark, and Depop comparing the first half vs second half of the selected period." /></span>
+            <span className="score-value" style={{ color: details.score.price_growth > 0 ? '#27ae60' : details.score.price_growth < 0 ? '#e74c3c' : '#aaa' }}>
+              {details.score.price_growth > 0 ? '+' : ''}{details.score.price_growth?.toFixed(1)}%
             </span>
           </div>
         </div>
@@ -147,7 +159,15 @@ export default function TrendDetail({ keyword, period, inline = false }) {
 
         <PriceChart data={details.ebay_avg_price} />
         <SalesVolumeChart data={details.sales_volume} />
-        <VolatilityDisplay value={details.price_volatility} />
+        <VolatilityDisplay value={details.price_volatility} cv={details.price_volatility_cv} />
+        <SentimentChart data={details.ebay_sentiment} />
+        <SocialMentionsChart
+          reddit={details.social_mentions?.reddit}
+          tiktok={details.social_mentions?.tiktok}
+        />
+        <SellThroughChart data={details.sell_through} />
+        <SeasonalChart data={seasonalData} />
+        <CorrelationPanel keyword={keyword} period={period} onSearch={onSearch} />
       </div>
 
       <RegionHeatmap usRegions={details.regions_us} />

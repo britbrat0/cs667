@@ -7,6 +7,7 @@ import {
   Tooltip,
   LabelList,
 } from 'recharts'
+import InfoTooltip from './InfoTooltip'
 
 export default function SalesVolumeChart({ data }) {
   if (!data || data.length === 0) {
@@ -22,7 +23,7 @@ export default function SalesVolumeChart({ data }) {
 
   return (
     <div className="chart-container">
-      <h4>Sales Volume Over Time</h4>
+      <h4>Sales Volume Over Time <InfoTooltip text="Combined sold listing count and active listing count per day across eBay, Etsy, Poshmark, and Depop." /></h4>
       <ResponsiveContainer width="100%" height={250}>
         <BarChart data={formatted}>
           <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#888' }} />
@@ -32,7 +33,7 @@ export default function SalesVolumeChart({ data }) {
             itemStyle={{ color: '#e0e0e0' }}
             labelStyle={{ color: '#aaa' }}
           />
-          <Bar dataKey="sold" fill="#5b9fd4" radius={[4, 4, 0, 0]}>
+          <Bar dataKey="sold" fill="#cc3333" radius={[4, 4, 0, 0]}>
             {sparse && <LabelList dataKey="sold" position="top" style={{ fontSize: 11, fill: '#888' }} />}
           </Bar>
         </BarChart>
