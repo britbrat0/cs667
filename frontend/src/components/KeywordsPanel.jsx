@@ -17,7 +17,7 @@ function timeAgo(dateStr) {
   return `${days}d ago`
 }
 
-export default function KeywordsPanel({ compareKeywords = [], onCompare, period = 7 }) {
+export default function KeywordsPanel({ compareKeywords = [], onCompare, period = 7, focusKeyword = null, onCorrelationClick }) {
   const [keywords, setKeywords] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
@@ -26,6 +26,16 @@ export default function KeywordsPanel({ compareKeywords = [], onCompare, period 
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState('')
   const [expandedKeyword, setExpandedKeyword] = useState(null)
+
+  useEffect(() => {
+    if (!focusKeyword) return
+    setExpandedKeyword(focusKeyword)
+    // Wait for the row to render, then scroll it into view
+    setTimeout(() => {
+      const el = document.querySelector(`[data-kw-row="${CSS.escape(focusKeyword)}"]`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+  }, [focusKeyword])
 
   useEffect(() => {
     fetchKeywords()
@@ -155,6 +165,7 @@ export default function KeywordsPanel({ compareKeywords = [], onCompare, period 
                 <>
                   <tr
                     key={kw.keyword}
+                    data-kw-row={kw.keyword}
                     className={`kw-row--clickable ${isExpanded ? 'kw-row--expanded' : ''}`}
                     onClick={() => setExpandedKeyword(isExpanded ? null : kw.keyword)}
                   >
@@ -205,7 +216,7 @@ export default function KeywordsPanel({ compareKeywords = [], onCompare, period 
                   {isExpanded && (
                     <tr key={`${kw.keyword}-detail`} className="kw-detail-row">
                       <td colSpan={7} className="kw-detail-cell">
-                        <TrendDetail keyword={kw.keyword} period={period} />
+                        <TrendDetail keyword={kw.keyword} period={period} onSearch={onCorrelationClick} />
                       </td>
                     </tr>
                   )}

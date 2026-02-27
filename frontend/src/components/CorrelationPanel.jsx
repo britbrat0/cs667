@@ -5,6 +5,7 @@ import InfoTooltip from './Charts/InfoTooltip'
 export default function CorrelationPanel({ keyword, period = 30, onSearch }) {
   const [correlations, setCorrelations] = useState([])
   const [loading, setLoading] = useState(false)
+  const [hovered, setHovered] = useState(null)
 
   useEffect(() => {
     if (!keyword) return
@@ -30,11 +31,13 @@ export default function CorrelationPanel({ keyword, period = 30, onSearch }) {
             <li
               key={item.keyword}
               style={{ marginBottom: 10, cursor: 'pointer' }}
+              onMouseEnter={() => setHovered(item.keyword)}
+              onMouseLeave={() => setHovered(null)}
               onClick={() => onSearch && onSearch(item.keyword)}
               title={`r = ${item.correlation}`}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                <span style={{ fontSize: 13, color: '#e0e0e0' }}>{item.keyword}</span>
+                <span style={{ fontSize: 13, color: hovered === item.keyword ? '#f0a8b8' : '#e0e0e0', textDecoration: hovered === item.keyword ? 'underline' : 'none', transition: 'color 0.15s' }}>{item.keyword}</span>
                 <span style={{ fontSize: 12, color: '#888' }}>
                   {item.correlation > 0 ? '+' : ''}{item.correlation.toFixed(2)}
                 </span>

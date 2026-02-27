@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [forecastMap, setForecastMap] = useState({})
   const [challengers, setChallengers] = useState([])
   const [compareSeries, setCompareSeries] = useState([])
+  const [trackFocusKeyword, setTrackFocusKeyword] = useState(null)
 
   const SCRAPE_STEPS = [
     'Checking Google Trends data...',
@@ -120,6 +121,21 @@ export default function Dashboard() {
     setSearchQuery('')
     setSimilarSuggestion(null)
     setExpandedKeyword(null)
+  }
+
+  const handleCorrelationClick = (kw) => {
+    const kwLower = kw.toLowerCase().trim()
+    if (trackedKeywords.includes(kwLower)) {
+      setView('keywords')
+      setTrackFocusKeyword(kwLower)
+    } else {
+      setView('search')
+      setSearchQuery(kwLower)
+      setExpandedKeyword(null)
+      setSimilarSuggestion(null)
+      setSearchResult(null)
+      doSearch(kwLower)
+    }
   }
 
   const handleCardClick = (keyword) => {
@@ -288,7 +304,7 @@ export default function Dashboard() {
             )}
 
             {!searchLoading && searchResult && (
-              <TrendDetail keyword={searchResult.keyword} period={period} onSearch={(kw) => { setView('search'); setSearchQuery(kw); setExpandedKeyword(null); setSimilarSuggestion(null); setSearchResult(null); doSearch(kw) }} />
+              <TrendDetail keyword={searchResult.keyword} period={period} onSearch={handleCorrelationClick} />
             )}
 
             {!searchLoading && !searchResult && !similarSuggestion && (
@@ -300,6 +316,8 @@ export default function Dashboard() {
             compareKeywords={compareKeywords}
             onCompare={handleCompare}
             period={period}
+            focusKeyword={trackFocusKeyword}
+            onCorrelationClick={handleCorrelationClick}
           />
         ) : view === 'compare' ? (
           <div>
@@ -339,7 +357,7 @@ export default function Dashboard() {
                         forecast={forecastMap[trend.keyword] || null}
                       />
                       {expandedKeyword === trend.keyword && (
-                        <TrendDetail keyword={trend.keyword} period={period} inline onSearch={(kw) => { setView('search'); setSearchQuery(kw); setExpandedKeyword(null); setSimilarSuggestion(null); setSearchResult(null); doSearch(kw) }} />
+                        <TrendDetail keyword={trend.keyword} period={period} inline onSearch={handleCorrelationClick} />
                       )}
                     </div>
                   ))}
