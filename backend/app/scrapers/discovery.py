@@ -299,23 +299,68 @@ def get_active_keywords() -> list[str]:
 
 
 def _extract_fashion_terms(titles: list[str]) -> list[str]:
-    """Extract potential fashion keywords from post titles using bigram/trigram frequency."""
+    """Fallback: extract potential fashion keywords from post titles using bigram frequency."""
     all_words = []
     for title in titles:
-        # Clean and tokenize
         words = re.findall(r"[a-z]+", title.lower())
         words = [w for w in words if w not in STOP_WORDS and len(w) > 2]
         all_words.extend(words)
-
-        # Also extract bigrams
         for i in range(len(words) - 1):
             bigram = f"{words[i]} {words[i + 1]}"
             all_words.append(bigram)
-
-    # Count frequencies
     counts = Counter(all_words)
-    # Return terms that appear at least 3 times
     return [term for term, count in counts.most_common(20) if count >= 3]
+
+
+def _extract_fashion_terms_with_claude(titles: list[str], depop_terms: list[str]) -> list[str]:
+    """Use Claude to extract fashion keywords from source text across all relevant categories:
+    colors, brands, prints, product types, silhouettes, fabrics, and aesthetics.
+    Falls back to frequency-based extraction if the API key is unavailable."""
+    if not settings.anthropic_api_key:
+        return _extract_fashion_terms(titles)
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+        titles_text = "\n".join(titles[:60])
+        depop_text = ", ".join(depop_terms[:30]) if depop_terms else "none"
+
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=600,
+            messages=[{
+                "role": "user",
+                "content": (
+                    "You are a fashion trend analyst. Extract specific fashion keywords from "
+                    "these Reddit post titles and Depop trending terms.\n\n"
+                    f"Reddit titles:\n{titles_text}\n\n"
+                    f"Depop trending terms: {depop_text}\n\n"
+                    "Extract keywords across ALL of these categories (include any that appear):\n"
+                    "- Colors & color combos (e.g. butter yellow, burgundy, sage green, chocolate brown)\n"
+                    "- Brands & designers (e.g. Vivienne Westwood, Margiela, Prada, Zara)\n"
+                    "- Prints & patterns (e.g. plaid, polka dots, houndstooth, leopard print, gingham)\n"
+                    "- Specific product types (e.g. maxi dress, trench coat, cargo pants, mary janes, moto jacket)\n"
+                    "- Silhouettes & cuts (e.g. puff sleeves, wide leg, barrel leg, asymmetric hem, empire waist)\n"
+                    "- Fabrics & materials (e.g. silk, velvet, linen, organic cotton, faux fur, satin)\n"
+                    "- Aesthetics & styles (e.g. coastal grandmother, dark academia, quiet luxury, gorpcore)\n\n"
+                    "Rules:\n"
+                    "- Only include terms genuinely present or strongly implied in the source text\n"
+                    "- Be specific: prefer 'barrel leg jeans' over 'jeans', 'butter yellow' over 'yellow'\n"
+                    "- 1–4 words per term only\n"
+                    "- Return ONLY a comma-separated list of terms, nothing else\n"
+                    "- Maximum 20 terms"
+                ),
+            }],
+        )
+
+        raw = response.content[0].text.strip()
+        terms = [t.strip().lower() for t in raw.split(",") if t.strip()]
+        return [t for t in terms if 2 < len(t) <= 60]
+
+    except Exception as e:
+        logger.warning(f"Claude fashion term extraction failed, falling back to frequency method: {e}")
+        return _extract_fashion_terms(titles)
 
 
 def run_discovery():
@@ -326,11 +371,8 @@ def run_discovery():
     reddit_titles = reddit_discover()
     depop_terms = depop_discover()
 
-    # Extract fashion terms from Reddit titles
-    reddit_candidates = _extract_fashion_terms(reddit_titles)
-
-    # Combine all candidates
-    all_candidates = set(reddit_candidates + depop_terms)
+    # Use Claude to extract fashion terms across all categories from all source text
+    all_candidates = set(_extract_fashion_terms_with_claude(reddit_titles, depop_terms))
 
     # Get existing keywords to avoid duplicates
     conn = get_connection()
@@ -349,7 +391,7 @@ def run_discovery():
             logger.debug(f"Discovery: skipping '{candidate}' — similar to existing '{similar}'")
             continue
         conn.execute(
-            "INSERT OR IGNORE INTO keywords (keyword, source, status) VALUES (?, 'auto_discovered', 'pending_review')",
+            "INSERT OR IGNORE INTO keywords (keyword, source, status) VALUES (?, 'auto_discovered', 'active')",
             (candidate,),
         )
         existing_set.add(candidate)
