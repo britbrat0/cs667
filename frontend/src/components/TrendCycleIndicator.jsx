@@ -74,7 +74,7 @@ export default function TrendCycleIndicator({ stage }) {
               <circle
                 cx={cx} cy={cy}
                 r={isActive ? 8 : 4}
-                fill={isActive ? '#cc3333' : isPast ? '#111111' : '#d0d5e0'}
+                fill={isActive ? '#cc3333' : '#d0d5e0'}
                 stroke={isActive ? '#fff' : 'none'}
                 strokeWidth={isActive ? 2.5 : 0}
               />

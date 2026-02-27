@@ -63,14 +63,16 @@ export default function TrendDetail({ keyword, period, inline = false }) {
 
   return (
     <div className={`trend-detail${inline ? ' trend-detail--inline' : ''}`}>
-      <div className="trend-detail__header">
-        <h3>{keyword}</h3>
-        {details.score?.lifecycle_stage && (
-          <LifecycleBadge stage={details.score.lifecycle_stage} size="large" />
-        )}
-      </div>
+      {!inline && (
+        <div className="trend-detail__header">
+          <h3>{keyword}</h3>
+          {details.score?.lifecycle_stage && (
+            <LifecycleBadge stage={details.score.lifecycle_stage} size="large" />
+          )}
+        </div>
+      )}
 
-      {details.score && (
+      {!inline && details.score && (
         <div className="trend-detail__scores">
           <div className="score-item">
             <span className="score-label">Composite Score</span>
