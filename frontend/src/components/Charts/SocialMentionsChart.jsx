@@ -10,7 +10,7 @@ import {
 } from 'recharts'
 import InfoTooltip from './InfoTooltip'
 
-function mergeByDate(reddit, tiktok) {
+function mergeByDate(reddit, tiktok, news) {
   const map = {}
   for (const d of reddit) {
     const key = new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -18,23 +18,23 @@ function mergeByDate(reddit, tiktok) {
   }
   for (const d of tiktok) {
     const key = new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    if (map[key]) {
-      map[key].tiktok = d.count
-    } else {
-      map[key] = { date: key, tiktok: d.count }
-    }
+    map[key] = { ...(map[key] || { date: key }), tiktok: d.count }
+  }
+  for (const d of news) {
+    const key = new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    map[key] = { ...(map[key] || { date: key }), news: d.count }
   }
   return Object.values(map).sort((a, b) => (a.date < b.date ? -1 : 1))
 }
 
-export default function SocialMentionsChart({ reddit = [], tiktok = [] }) {
-  if (!reddit?.length && !tiktok?.length) return null
+export default function SocialMentionsChart({ reddit = [], tiktok = [], news = [] }) {
+  if (!reddit?.length && !tiktok?.length && !news?.length) return null
 
-  const data = mergeByDate(reddit, tiktok)
+  const data = mergeByDate(reddit, tiktok, news)
 
   return (
     <div className="chart-container">
-      <h4>Social Mentions <InfoTooltip text="Daily post count mentioning this keyword on Reddit (bars) and TikTok (line). Signals grassroots community interest outside of search data." /></h4>
+      <h4>Social &amp; Media Mentions <InfoTooltip text="Daily mention count across Reddit (bars), TikTok (line), and Google News articles (orange line). Signals community interest and mainstream media coverage." /></h4>
       <ResponsiveContainer width="100%" height={220}>
         <ComposedChart data={data}>
           <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#888' }} />
@@ -56,6 +56,17 @@ export default function SocialMentionsChart({ reddit = [], tiktok = [] }) {
               stroke="#7c3aed"
               strokeWidth={2}
               dot={{ r: 3, fill: '#7c3aed' }}
+              activeDot={{ r: 5 }}
+            />
+          )}
+          {news?.length > 0 && (
+            <Line
+              type="monotone"
+              dataKey="news"
+              name="News Articles"
+              stroke="#f59e0b"
+              strokeWidth={2}
+              dot={{ r: 3, fill: '#f59e0b' }}
               activeDot={{ r: 5 }}
             />
           )}

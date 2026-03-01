@@ -12,6 +12,7 @@ from app.scrapers.tiktok import scrape_tiktok
 from app.scrapers.depop import scrape_depop
 from app.scrapers.etsy import scrape_etsy
 from app.scrapers.poshmark import scrape_poshmark
+from app.scrapers.news import scrape_news
 from app.scrapers.discovery import get_active_keywords, run_discovery, refine_scale_classifications
 from app.database import get_connection
 from app.trends.service import compute_and_store_scores
@@ -38,6 +39,10 @@ def scrape_all_sources():
         scrape_depop(keyword)
         scrape_etsy(keyword)
         scrape_poshmark(keyword)
+        try:
+            scrape_news(keyword)
+        except Exception as e:
+            logger.warning(f"News scrape skipped for '{keyword}': {e}")
         time.sleep(random.uniform(5, 10))  # pause between keywords to avoid rate limits
 
     logger.info("Scheduled scrape complete")
@@ -142,14 +147,19 @@ def scrape_single_keyword(keyword: str):
     scrape_depop(keyword)
     scrape_etsy(keyword)
     scrape_poshmark(keyword)
+    try:
+        scrape_news(keyword)
+    except Exception as e:
+        logger.warning(f"News scrape skipped for '{keyword}': {e}")
     compute_and_store_scores(keyword)
     logger.info(f"On-demand scrape and scoring complete for '{keyword}'")
 
 
 def start_scheduler():
     """Initialize and start the background scheduler."""
-    # Scrape + score every 6 hours
-    scheduler.add_job(scrape_and_score, "interval", hours=6, id="scrape_and_score", replace_existing=True)
+    # Scrape + score every 6 hours — run once immediately on startup so restarts don't leave data stale
+    scheduler.add_job(scrape_and_score, "interval", hours=6, id="scrape_and_score", replace_existing=True,
+                      next_run_time=datetime.now(timezone.utc))
 
     # Auto-discover new keywords every 24 hours
     scheduler.add_job(discover_keywords, "interval", hours=24, id="discover_keywords", replace_existing=True)

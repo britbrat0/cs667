@@ -160,10 +160,11 @@ export default function TrendDetail({ keyword, period, inline = false, onSearch 
         <PriceChart data={details.ebay_avg_price} />
         <SalesVolumeChart data={details.sales_volume} />
         <VolatilityDisplay value={details.price_volatility} cv={details.price_volatility_cv} />
-        <SentimentChart data={details.ebay_sentiment} />
+        <SentimentChart data={details.ebay_sentiment} newsData={details.social_mentions?.news_sentiment} />
         <SocialMentionsChart
           reddit={details.social_mentions?.reddit}
           tiktok={details.social_mentions?.tiktok}
+          news={details.social_mentions?.news}
         />
         <SellThroughChart data={details.sell_through} />
         <SeasonalChart data={seasonalData} />

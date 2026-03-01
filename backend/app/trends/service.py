@@ -293,6 +293,16 @@ def get_keyword_details(keyword: str, period_days: int = 7) -> dict:
         (keyword, start),
     ).fetchall()
 
+    # News article mentions + sentiment
+    news_mention_rows = conn.execute(
+        "SELECT value, recorded_at FROM trend_data WHERE keyword = ? AND source = 'news' AND metric = 'news_mentions' AND recorded_at >= ? ORDER BY recorded_at",
+        (keyword, start),
+    ).fetchall()
+    news_sentiment_rows = conn.execute(
+        "SELECT value, recorded_at FROM trend_data WHERE keyword = ? AND source = 'news' AND metric = 'news_sentiment' AND recorded_at >= ? ORDER BY recorded_at",
+        (keyword, start),
+    ).fetchall()
+
     # Sell-through: latest active listing count + latest 30d sold count
     latest_active = conn.execute(
         "SELECT value FROM trend_data WHERE keyword = ? AND source = 'ebay' AND metric = 'sold_count' ORDER BY recorded_at DESC LIMIT 1",
@@ -345,6 +355,8 @@ def get_keyword_details(keyword: str, period_days: int = 7) -> dict:
             "reddit_sentiment": [{"date": r["recorded_at"], "value": r["value"]} for r in reddit_sentiment_rows],
             "tiktok": [{"date": r["recorded_at"], "count": r["value"]} for r in tiktok_mention_rows],
             "tiktok_sentiment": [{"date": r["recorded_at"], "value": r["value"]} for r in tiktok_sentiment_rows],
+            "news": [{"date": r["recorded_at"], "count": r["value"]} for r in news_mention_rows],
+            "news_sentiment": [{"date": r["recorded_at"], "value": r["value"]} for r in news_sentiment_rows],
         },
         "sell_through": sell_through,
     }
