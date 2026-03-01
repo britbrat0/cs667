@@ -34,7 +34,7 @@ export default function SocialMentionsChart({ reddit = [], tiktok = [], news = [
 
   return (
     <div className="chart-container">
-      <h4>Social &amp; Media Mentions <InfoTooltip text="Daily mention count across Reddit (bars), TikTok (line), and Google News articles (orange line). Signals community interest and mainstream media coverage." /></h4>
+      <h4>Social &amp; Media Mentions <InfoTooltip text="Daily mention count across Reddit (pink bars), News & Blogs articles (rose bars), and TikTok (purple line). Signals community interest and mainstream media coverage." /></h4>
       <ResponsiveContainer width="100%" height={220}>
         <ComposedChart data={data}>
           <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#888' }} />
@@ -48,6 +48,9 @@ export default function SocialMentionsChart({ reddit = [], tiktok = [], news = [
           {reddit?.length > 0 && (
             <Bar dataKey="reddit" name="Reddit" fill="#f0a8b8" radius={[3, 3, 0, 0]} />
           )}
+          {news?.length > 0 && (
+            <Bar dataKey="news" name="News & Blogs" fill="#c94070" radius={[3, 3, 0, 0]} />
+          )}
           {tiktok?.length > 0 && (
             <Line
               type="monotone"
@@ -56,17 +59,6 @@ export default function SocialMentionsChart({ reddit = [], tiktok = [], news = [
               stroke="#7c3aed"
               strokeWidth={2}
               dot={{ r: 3, fill: '#7c3aed' }}
-              activeDot={{ r: 5 }}
-            />
-          )}
-          {news?.length > 0 && (
-            <Line
-              type="monotone"
-              dataKey="news"
-              name="News Articles"
-              stroke="#f59e0b"
-              strokeWidth={2}
-              dot={{ r: 3, fill: '#f59e0b' }}
               activeDot={{ r: 5 }}
             />
           )}
