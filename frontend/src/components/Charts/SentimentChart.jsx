@@ -49,7 +49,7 @@ export default function SentimentChart({ newsData = [], redditSentiment = [], ti
 
   return (
     <div className="chart-container">
-      <h4>Media Sentiment <InfoTooltip text="Average VADER sentiment score (−1 to +1) across news & blog articles, Reddit posts, and TikTok content. Positive = favorable coverage of this trend. Negative = criticism or backlash." /></h4>
+      <h4>Social &amp; Media Sentiment <InfoTooltip text="Average VADER sentiment score (−1 to +1) across news & blog articles, Reddit posts, and TikTok content. Positive = favorable coverage of this trend. Negative = criticism or backlash." /></h4>
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={data}>
           <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#888' }} />
